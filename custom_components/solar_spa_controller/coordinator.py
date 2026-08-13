@@ -16,21 +16,27 @@ from homeassistant.util import dt as dt_util
 from .const import (
     CONF_AVERAGING_WINDOW,
     CONF_COOL_TEMPERATURE,
+    CONF_CT_EXPORT_SIGN,
     CONF_HEAT_TEMPERATURE,
     CONF_MIN_HOLD_TIME,
     CONF_OFF_THRESHOLD,
     CONF_ON_THRESHOLD,
+    CONF_POWER_SOURCE,
     CONF_SAMPLING_INTERVAL,
     CONF_SOLAR_ENTITY,
     CONF_SPA_CLIMATE_ENTITY,
+    CT_EXPORT_NEGATIVE,
+    DEFAULT_CT_EXPORT_SIGN,
     DEFAULT_AVERAGING_WINDOW,
     DEFAULT_COOL_TEMPERATURE,
     DEFAULT_HEAT_TEMPERATURE,
     DEFAULT_MIN_HOLD_TIME,
     DEFAULT_OFF_THRESHOLD,
     DEFAULT_ON_THRESHOLD,
+    DEFAULT_POWER_SOURCE,
     DEFAULT_SAMPLING_INTERVAL,
     DOMAIN,
+    POWER_SOURCE_CT_CLAMPS,
     STATE_COOLING,
     STATE_HEATING,
     STATE_WAITING,
@@ -73,7 +79,7 @@ class SolarSpaCoordinator(DataUpdateCoordinator[SolarSpaData]):
         """Sample solar production and update the spa target when needed."""
         try:
             now = dt_util.utcnow()
-            power = self._read_solar_power()
+            power = self._read_available_power()
             if power is not None:
                 self._samples.append((now, power))
             self._trim_samples(now)
@@ -91,21 +97,28 @@ class SolarSpaCoordinator(DataUpdateCoordinator[SolarSpaData]):
         except Exception as err:
             raise UpdateFailed(str(err)) from err
 
-    def _read_solar_power(self) -> float | None:
-        """Read the selected solar entity and normalize to watts."""
+    def _read_available_power(self) -> float | None:
+        """Read the selected power entity and normalize to available watts."""
         state = self.hass.states.get(self._option(CONF_SOLAR_ENTITY))
         if state is None or state.state in {"unknown", "unavailable"}:
-            self._last_action = "Solar sensor unavailable"
+            self._last_action = "Power source sensor unavailable"
             return None
 
         try:
             value = float(state.state)
         except ValueError:
-            self._last_action = f"Solar sensor value is not numeric: {state.state}"
+            self._last_action = f"Power source sensor value is not numeric: {state.state}"
             return None
 
         if _state_unit(state) == UnitOfPower.KILO_WATT:
-            return value * 1000
+            value *= 1000
+
+        if (
+            self._option(CONF_POWER_SOURCE) == POWER_SOURCE_CT_CLAMPS
+            and self._option(CONF_CT_EXPORT_SIGN) == CT_EXPORT_NEGATIVE
+        ):
+            return -value
+
         return value
 
     def _trim_samples(self, now: datetime) -> None:
@@ -144,20 +157,21 @@ class SolarSpaCoordinator(DataUpdateCoordinator[SolarSpaData]):
 
         if desired_target is None:
             self._last_action = (
-                f"Average solar is {average:.0f} W, between thresholds; holding state"
+                f"Average available power is {average:.0f} W, between thresholds; "
+                "holding state"
             )
             return self._active_target or STATE_WAITING
 
         if desired_target == self._active_target:
             self._last_action = (
-                f"Already {desired_target}; average solar is {average:.0f} W"
+                f"Already {desired_target}; average available power is {average:.0f} W"
             )
             return desired_target
 
         if not self._hold_time_elapsed(now):
             self._last_action = (
                 f"Waiting for hold time before switching to {desired_target}; "
-                f"average solar is {average:.0f} W"
+                f"average available power is {average:.0f} W"
             )
             return self._active_target or STATE_WAITING
 
@@ -174,8 +188,8 @@ class SolarSpaCoordinator(DataUpdateCoordinator[SolarSpaData]):
         self._active_target = desired_target
         self._last_switch = now
         self._last_action = (
-            f"Set spa to {desired_temperature:g} C because average solar was "
-            f"{average:.0f} W"
+            f"Set spa to {desired_temperature:g} C because average available power "
+            f"was {average:.0f} W"
         )
         return desired_target
 
@@ -192,6 +206,8 @@ class SolarSpaCoordinator(DataUpdateCoordinator[SolarSpaData]):
         defaults = {
             CONF_HEAT_TEMPERATURE: DEFAULT_HEAT_TEMPERATURE,
             CONF_COOL_TEMPERATURE: DEFAULT_COOL_TEMPERATURE,
+            CONF_POWER_SOURCE: DEFAULT_POWER_SOURCE,
+            CONF_CT_EXPORT_SIGN: DEFAULT_CT_EXPORT_SIGN,
             CONF_ON_THRESHOLD: DEFAULT_ON_THRESHOLD,
             CONF_OFF_THRESHOLD: DEFAULT_OFF_THRESHOLD,
             CONF_AVERAGING_WINDOW: DEFAULT_AVERAGING_WINDOW,

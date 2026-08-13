@@ -13,21 +13,29 @@ from homeassistant.helpers import selector
 from .const import (
     CONF_AVERAGING_WINDOW,
     CONF_COOL_TEMPERATURE,
+    CONF_CT_EXPORT_SIGN,
     CONF_HEAT_TEMPERATURE,
     CONF_MIN_HOLD_TIME,
     CONF_OFF_THRESHOLD,
     CONF_ON_THRESHOLD,
+    CONF_POWER_SOURCE,
     CONF_SAMPLING_INTERVAL,
     CONF_SOLAR_ENTITY,
     CONF_SPA_CLIMATE_ENTITY,
+    CT_EXPORT_NEGATIVE,
+    CT_EXPORT_POSITIVE,
     DEFAULT_AVERAGING_WINDOW,
     DEFAULT_COOL_TEMPERATURE,
+    DEFAULT_CT_EXPORT_SIGN,
     DEFAULT_HEAT_TEMPERATURE,
     DEFAULT_MIN_HOLD_TIME,
     DEFAULT_OFF_THRESHOLD,
     DEFAULT_ON_THRESHOLD,
+    DEFAULT_POWER_SOURCE,
     DEFAULT_SAMPLING_INTERVAL,
     DOMAIN,
+    POWER_SOURCE_CT_CLAMPS,
+    POWER_SOURCE_SOLAR_PANELS,
 )
 
 
@@ -36,10 +44,46 @@ def _schema(defaults: dict[str, Any]) -> vol.Schema:
     return vol.Schema(
         {
             vol.Required(
+                CONF_POWER_SOURCE,
+                default=defaults.get(CONF_POWER_SOURCE, DEFAULT_POWER_SOURCE),
+            ): selector.SelectSelector(
+                selector.SelectSelectorConfig(
+                    options=[
+                        selector.SelectOptionDict(
+                            value=POWER_SOURCE_SOLAR_PANELS,
+                            label="Solar panels",
+                        ),
+                        selector.SelectOptionDict(
+                            value=POWER_SOURCE_CT_CLAMPS,
+                            label="CT clamps",
+                        ),
+                    ],
+                    mode=selector.SelectSelectorMode.DROPDOWN,
+                )
+            ),
+            vol.Required(
                 CONF_SOLAR_ENTITY,
                 default=defaults.get(CONF_SOLAR_ENTITY),
             ): selector.EntitySelector(
                 selector.EntitySelectorConfig(domain=["sensor"])
+            ),
+            vol.Required(
+                CONF_CT_EXPORT_SIGN,
+                default=defaults.get(CONF_CT_EXPORT_SIGN, DEFAULT_CT_EXPORT_SIGN),
+            ): selector.SelectSelector(
+                selector.SelectSelectorConfig(
+                    options=[
+                        selector.SelectOptionDict(
+                            value=CT_EXPORT_POSITIVE,
+                            label="Positive value means export/available power",
+                        ),
+                        selector.SelectOptionDict(
+                            value=CT_EXPORT_NEGATIVE,
+                            label="Negative value means export/available power",
+                        ),
+                    ],
+                    mode=selector.SelectSelectorMode.DROPDOWN,
+                )
             ),
             vol.Required(
                 CONF_SPA_CLIMATE_ENTITY,
@@ -213,4 +257,3 @@ def _validate(user_input: dict[str, Any]) -> dict[str, str]:
     if user_input[CONF_COOL_TEMPERATURE] >= user_input[CONF_HEAT_TEMPERATURE]:
         errors["base"] = "cool_temperature_must_be_below_heat_temperature"
     return errors
-

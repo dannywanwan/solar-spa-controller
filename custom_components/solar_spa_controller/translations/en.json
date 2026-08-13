@@ -3,9 +3,11 @@
     "step": {
       "user": {
         "title": "Solar Spa Controller",
-        "description": "Configure the solar production source and spa setpoint behaviour.",
+        "description": "Configure the power source and spa setpoint behaviour.",
         "data": {
-          "solar_entity": "Solar production entity",
+          "power_source": "Power source",
+          "solar_entity": "Power sensor entity",
+          "ct_export_sign": "CT clamp export direction",
           "spa_climate_entity": "Spa climate entity",
           "heat_temperature": "Heat target temperature",
           "cool_temperature": "Cool target temperature",
@@ -30,7 +32,9 @@
       "init": {
         "title": "Solar Spa Controller Options",
         "data": {
-          "solar_entity": "Solar production entity",
+          "power_source": "Power source",
+          "solar_entity": "Power sensor entity",
+          "ct_export_sign": "CT clamp export direction",
           "spa_climate_entity": "Spa climate entity",
           "heat_temperature": "Heat target temperature",
           "cool_temperature": "Cool target temperature",
@@ -50,7 +54,7 @@
   "entity": {
     "sensor": {
       "average_power": {
-        "name": "Average solar power"
+        "name": "Average available power"
       },
       "controller_state": {
         "name": "Controller state"
@@ -58,4 +62,3 @@
     }
   }
 }
-

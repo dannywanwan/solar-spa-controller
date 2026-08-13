@@ -2,12 +2,13 @@
 
 ![Solar Spa Controller icon](brand/icon.png)
 
-Solar Spa Controller is a Home Assistant custom integration that watches real-time solar production and adjusts a spa climate entity's target temperature based on averaged solar output.
+Solar Spa Controller is a Home Assistant custom integration that watches available solar power and adjusts a spa climate entity's target temperature based on averaged output.
 
 It is designed to replace a fragile automation with a small controller that has:
 
 - UI setup from **Settings > Devices & services**
-- Solar production entity selection
+- Power source selection for solar panel production or CT clamps
+- Power sensor entity selection
 - Spa climate entity selection
 - Heat and cool target temperatures
 - Separate solar ON and OFF thresholds for hysteresis
@@ -20,7 +21,8 @@ It is designed to replace a fragile automation with a small controller that has:
 2. Restart Home Assistant.
 3. Go to **Settings > Devices & services > Add integration**.
 4. Search for **Solar Spa Controller**.
-5. Select your solar power sensor and spa climate entity, then set the thresholds and temperatures.
+5. Select whether the power data comes from your solar panels or CT clamps.
+6. Select the matching power sensor and spa climate entity, then set the thresholds and temperatures.
 
 ## Recommended Starting Settings
 
@@ -36,11 +38,13 @@ Tune these after watching the diagnostic entities for a day or two.
 
 ## How It Works
 
-The integration samples the selected solar entity on a schedule and keeps a rolling average. If the average solar production rises above the ON threshold, it sets the spa climate entity to the configured heat target. If the average drops below the OFF threshold, it sets the spa to the configured cool target.
+The integration samples the selected power sensor on a schedule and keeps a rolling average. If the average available power rises above the ON threshold, it sets the spa climate entity to the configured heat target. If the average drops below the OFF threshold, it sets the spa to the configured cool target.
 
 The two thresholds prevent rapid switching when solar production hovers around one number. The minimum hold time adds another guard against frequent setpoint changes during patchy cloud.
 
-If the solar sensor reports in `kW`, values are automatically converted to watts.
+If the selected sensor reports in `kW`, values are automatically converted to watts.
+
+For CT clamps, you can choose whether export/available power is reported as a positive or negative value. If your clamp sensor reports grid import as positive and grid export as negative, choose the negative export option.
 
 ## Notes
 
@@ -50,7 +54,7 @@ If the solar sensor reports in `kW`, values are automatically converted to watts
 
 The integration creates:
 
-- **Average solar power** sensor
+- **Average available power** sensor
 - **Controller state** diagnostic sensor
 
 The controller state includes the current decision and the last action taken.

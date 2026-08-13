@@ -14,7 +14,12 @@ from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
-from .const import DOMAIN
+from .const import (
+    CONF_POWER_SOURCE,
+    CONF_SOLAR_ENTITY,
+    DEFAULT_POWER_SOURCE,
+    DOMAIN,
+)
 from .coordinator import SolarSpaCoordinator
 
 
@@ -96,5 +101,12 @@ class SolarSpaSensor(CoordinatorEntity[SolarSpaCoordinator], SensorEntity):
             "last_action": data.last_action,
             "sample_count": data.sample_count,
             "active_target": data.active_target,
+            "power_source": self.coordinator.entry.options.get(
+                CONF_POWER_SOURCE,
+                self.coordinator.entry.data.get(CONF_POWER_SOURCE, DEFAULT_POWER_SOURCE),
+            ),
+            "power_source_entity": self.coordinator.entry.options.get(
+                CONF_SOLAR_ENTITY,
+                self.coordinator.entry.data.get(CONF_SOLAR_ENTITY),
+            ),
         }
-
