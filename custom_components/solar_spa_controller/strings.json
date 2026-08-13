@@ -1,0 +1,61 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Solar Spa Controller",
+        "description": "Configure the solar production source and spa setpoint behaviour.",
+        "data": {
+          "solar_entity": "Solar production entity",
+          "spa_climate_entity": "Spa climate entity",
+          "heat_temperature": "Heat target temperature",
+          "cool_temperature": "Cool target temperature",
+          "on_threshold": "Solar ON threshold",
+          "off_threshold": "Solar OFF threshold",
+          "averaging_window": "Averaging window",
+          "min_hold_time": "Minimum hold time",
+          "sampling_interval": "Sampling interval"
+        }
+      }
+    },
+    "error": {
+      "off_threshold_must_be_below_on_threshold": "The OFF threshold must be below the ON threshold.",
+      "cool_temperature_must_be_below_heat_temperature": "The cool temperature must be below the heat temperature."
+    },
+    "abort": {
+      "already_configured": "This solar and spa entity combination is already configured."
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Solar Spa Controller Options",
+        "data": {
+          "solar_entity": "Solar production entity",
+          "spa_climate_entity": "Spa climate entity",
+          "heat_temperature": "Heat target temperature",
+          "cool_temperature": "Cool target temperature",
+          "on_threshold": "Solar ON threshold",
+          "off_threshold": "Solar OFF threshold",
+          "averaging_window": "Averaging window",
+          "min_hold_time": "Minimum hold time",
+          "sampling_interval": "Sampling interval"
+        }
+      }
+    },
+    "error": {
+      "off_threshold_must_be_below_on_threshold": "The OFF threshold must be below the ON threshold.",
+      "cool_temperature_must_be_below_heat_temperature": "The cool temperature must be below the heat temperature."
+    }
+  },
+  "entity": {
+    "sensor": {
+      "average_power": {
+        "name": "Average solar power"
+      },
+      "controller_state": {
+        "name": "Controller state"
+      }
+    }
+  }
+}
+

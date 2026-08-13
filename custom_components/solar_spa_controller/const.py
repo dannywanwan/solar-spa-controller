@@ -1,0 +1,26 @@
+"""Constants for Solar Spa Controller."""
+
+DOMAIN = "solar_spa_controller"
+
+CONF_SOLAR_ENTITY = "solar_entity"
+CONF_SPA_CLIMATE_ENTITY = "spa_climate_entity"
+CONF_HEAT_TEMPERATURE = "heat_temperature"
+CONF_COOL_TEMPERATURE = "cool_temperature"
+CONF_ON_THRESHOLD = "on_threshold"
+CONF_OFF_THRESHOLD = "off_threshold"
+CONF_AVERAGING_WINDOW = "averaging_window"
+CONF_MIN_HOLD_TIME = "min_hold_time"
+CONF_SAMPLING_INTERVAL = "sampling_interval"
+
+DEFAULT_HEAT_TEMPERATURE = 38.0
+DEFAULT_COOL_TEMPERATURE = 26.0
+DEFAULT_ON_THRESHOLD = 3800
+DEFAULT_OFF_THRESHOLD = 3200
+DEFAULT_AVERAGING_WINDOW = 10
+DEFAULT_MIN_HOLD_TIME = 5
+DEFAULT_SAMPLING_INTERVAL = 60
+
+STATE_HEATING = "heating"
+STATE_COOLING = "cooling"
+STATE_WAITING = "waiting"
+
