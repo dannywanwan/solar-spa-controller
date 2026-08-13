@@ -39,6 +39,7 @@ from .const import (
     POWER_SOURCE_CT_CLAMPS,
     STATE_COOLING,
     STATE_HEATING,
+    STATE_INACTIVE,
     STATE_WAITING,
     STATE_WARMING_UP,
 )
@@ -56,6 +57,7 @@ class SolarSpaData:
     last_action: str
     sample_count: int
     active_target: str | None
+    controller_enabled: bool
 
 
 class SolarSpaCoordinator(DataUpdateCoordinator[SolarSpaData]):
@@ -68,6 +70,7 @@ class SolarSpaCoordinator(DataUpdateCoordinator[SolarSpaData]):
         self._active_target: str | None = None
         self._last_switch: datetime | None = None
         self._last_action = "Controller initialized"
+        self.controller_enabled = True
 
         super().__init__(
             hass,
@@ -94,9 +97,20 @@ class SolarSpaCoordinator(DataUpdateCoordinator[SolarSpaData]):
                 last_action=self._last_action,
                 sample_count=len(self._samples),
                 active_target=self._active_target,
+                controller_enabled=self.controller_enabled,
             )
         except Exception as err:
             raise UpdateFailed(str(err)) from err
+
+    async def async_set_enabled(self, enabled: bool) -> None:
+        """Enable or disable automatic spa control."""
+        self.controller_enabled = enabled
+        self._last_action = (
+            "Automatic spa control enabled"
+            if enabled
+            else "Automatic spa control disabled; monitoring only"
+        )
+        await self.async_request_refresh()
 
     def _read_available_power(self) -> float | None:
         """Read the selected power entity and normalize to available watts."""
@@ -142,6 +156,13 @@ class SolarSpaCoordinator(DataUpdateCoordinator[SolarSpaData]):
         """Apply threshold logic and set the spa target when needed."""
         if average is None:
             return STATE_WAITING
+
+        if not self.controller_enabled:
+            self._last_action = (
+                f"Automatic spa control is off; average available power is "
+                f"{average:.0f} W"
+            )
+            return STATE_INACTIVE
 
         if not self._averaging_window_ready(now):
             self._last_action = (

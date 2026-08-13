@@ -101,6 +101,7 @@ class SolarSpaSensor(CoordinatorEntity[SolarSpaCoordinator], SensorEntity):
             "last_action": data.last_action,
             "sample_count": data.sample_count,
             "active_target": data.active_target,
+            "automatic_control_enabled": data.controller_enabled,
             "power_source": self.coordinator.entry.options.get(
                 CONF_POWER_SOURCE,
                 self.coordinator.entry.data.get(CONF_POWER_SOURCE, DEFAULT_POWER_SOURCE),

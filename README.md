@@ -13,6 +13,7 @@ It is designed to replace a fragile automation with a small controller that has:
 - Heat and cool target temperatures
 - Separate solar ON and OFF thresholds for hysteresis
 - Configurable averaging window, sampling interval, and minimum hold time
+- Automatic control switch so you can pause solar-based setpoint changes
 - Diagnostic sensors for average solar power and controller state
 
 ## Installation
@@ -57,6 +58,8 @@ If the selected sensor reports in `kW`, values are automatically converted to wa
 
 For CT clamps, you can choose whether export/available power is reported as a positive or negative value. If your clamp sensor reports grid import as positive and grid export as negative, choose the negative export option.
 
+Turn **Automatic control** off when you want to heat the spa manually. The integration will keep monitoring available power and updating its diagnostic entities, but it will not change the spa's target temperature while the switch is off.
+
 ## Notes
 
 "Cool" means lowering the spa climate entity's target temperature with `climate.set_temperature`. The integration does not attempt to switch the spa into an HVAC cooling mode.
@@ -67,5 +70,6 @@ The integration creates:
 
 - **Average available power** sensor
 - **Controller state** diagnostic sensor
+- **Automatic control** switch
 
 The controller state includes the current decision and the last action taken.

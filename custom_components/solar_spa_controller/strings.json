@@ -59,6 +59,11 @@
       "controller_state": {
         "name": "Controller state"
       }
+    },
+    "switch": {
+      "automatic_control": {
+        "name": "Automatic control"
+      }
     }
   }
 }
