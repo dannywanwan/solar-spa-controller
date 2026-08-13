@@ -17,12 +17,23 @@ It is designed to replace a fragile automation with a small controller that has:
 
 ## Installation
 
+### HACS
+
+1. Add `https://github.com/dannywanwan/solar-spa-controller` as a HACS custom repository with category **Integration**.
+2. Install **Solar Spa Controller** from HACS.
+3. Restart Home Assistant.
+4. Go to **Settings > Devices & services > Add integration**.
+5. Search for **Solar Spa Controller**.
+6. Select whether the power data comes from your solar panels or CT clamps.
+7. Select the matching power sensor and spa climate entity, then set the thresholds and temperatures.
+
+HACS installs the files only. The entities and device are created after the integration is added through **Devices & services**.
+
+### Manual
+
 1. Copy `custom_components/solar_spa_controller` into your Home Assistant `/config/custom_components/` directory.
 2. Restart Home Assistant.
-3. Go to **Settings > Devices & services > Add integration**.
-4. Search for **Solar Spa Controller**.
-5. Select whether the power data comes from your solar panels or CT clamps.
-6. Select the matching power sensor and spa climate entity, then set the thresholds and temperatures.
+3. Add **Solar Spa Controller** from **Settings > Devices & services > Add integration**.
 
 ## Recommended Starting Settings
 

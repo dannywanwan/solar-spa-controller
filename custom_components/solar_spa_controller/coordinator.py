@@ -40,6 +40,7 @@ from .const import (
     STATE_COOLING,
     STATE_HEATING,
     STATE_WAITING,
+    STATE_WARMING_UP,
 )
 
 _LOGGER = logging.getLogger(__name__)
@@ -142,6 +143,13 @@ class SolarSpaCoordinator(DataUpdateCoordinator[SolarSpaData]):
         if average is None:
             return STATE_WAITING
 
+        if not self._averaging_window_ready(now):
+            self._last_action = (
+                f"Warming up averaging window; average available power is "
+                f"{average:.0f} W from {len(self._samples)} sample(s)"
+            )
+            return self._active_target or STATE_WARMING_UP
+
         on_threshold = self._option(CONF_ON_THRESHOLD)
         off_threshold = self._option(CONF_OFF_THRESHOLD)
 
@@ -175,15 +183,26 @@ class SolarSpaCoordinator(DataUpdateCoordinator[SolarSpaData]):
             )
             return self._active_target or STATE_WAITING
 
-        await self.hass.services.async_call(
-            "climate",
-            SERVICE_SET_TEMPERATURE,
-            {
-                ATTR_ENTITY_ID: self._option(CONF_SPA_CLIMATE_ENTITY),
-                ATTR_TEMPERATURE: desired_temperature,
-            },
-            blocking=True,
-        )
+        try:
+            await self.hass.services.async_call(
+                "climate",
+                SERVICE_SET_TEMPERATURE,
+                {
+                    ATTR_ENTITY_ID: self._option(CONF_SPA_CLIMATE_ENTITY),
+                    ATTR_TEMPERATURE: desired_temperature,
+                },
+                blocking=True,
+            )
+        except Exception as err:
+            self._last_action = (
+                f"Could not set spa temperature to {desired_temperature:g} C: {err}"
+            )
+            _LOGGER.warning(
+                "Could not set spa temperature for %s",
+                self._option(CONF_SPA_CLIMATE_ENTITY),
+                exc_info=err,
+            )
+            return self._active_target or STATE_WAITING
 
         self._active_target = desired_target
         self._last_switch = now
@@ -200,6 +219,14 @@ class SolarSpaCoordinator(DataUpdateCoordinator[SolarSpaData]):
 
         hold_time = timedelta(minutes=self._option(CONF_MIN_HOLD_TIME))
         return now - self._last_switch >= hold_time
+
+    def _averaging_window_ready(self, now: datetime) -> bool:
+        """Return whether the controller has enough samples to act."""
+        if not self._samples:
+            return False
+
+        window = timedelta(minutes=self._option(CONF_AVERAGING_WINDOW))
+        return now - self._samples[0][0] >= window
 
     def _option(self, key: str):
         """Read an option, falling back to config data and defaults."""
