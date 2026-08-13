@@ -1,5 +1,7 @@
 # Solar Spa Controller
 
+![Solar Spa Controller icon](brand/icon.png)
+
 Solar Spa Controller is a Home Assistant custom integration that watches real-time solar production and adjusts a spa climate entity's target temperature based on averaged solar output.
 
 It is designed to replace a fragile automation with a small controller that has:
@@ -52,4 +54,3 @@ The integration creates:
 - **Controller state** diagnostic sensor
 
 The controller state includes the current decision and the last action taken.
-
