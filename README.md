@@ -44,11 +44,15 @@ After updating Solar Spa Controller through HACS, restart Home Assistant. HACS u
 
 A reasonable first pass for many spa setups:
 
+- Heat target: `38` C
+- Cool target: `26` C
 - Averaging window: `10` minutes
 - Solar ON threshold: `3800` W
 - Solar OFF threshold: `3200` W
 - Minimum hold time: `5` minutes
 - Sampling interval: `60` seconds
+
+The setup UI limits the low/cool target to `18-26` C and the high/heat target to `26-40` C.
 
 Tune these after watching the diagnostic entities for a day or two.
 

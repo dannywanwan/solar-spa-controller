@@ -34,6 +34,10 @@ from .const import (
     DEFAULT_POWER_SOURCE,
     DEFAULT_SAMPLING_INTERVAL,
     DOMAIN,
+    MAX_COOL_TEMPERATURE,
+    MAX_HEAT_TEMPERATURE,
+    MIN_COOL_TEMPERATURE,
+    MIN_HEAT_TEMPERATURE,
     POWER_SOURCE_CT_CLAMPS,
     POWER_SOURCE_SOLAR_PANELS,
 )
@@ -96,8 +100,8 @@ def _schema(defaults: dict[str, Any]) -> vol.Schema:
                 default=defaults.get(CONF_HEAT_TEMPERATURE, DEFAULT_HEAT_TEMPERATURE),
             ): selector.NumberSelector(
                 selector.NumberSelectorConfig(
-                    min=5,
-                    max=45,
+                    min=MIN_HEAT_TEMPERATURE,
+                    max=MAX_HEAT_TEMPERATURE,
                     step=0.5,
                     unit_of_measurement=UnitOfTemperature.CELSIUS,
                     mode=selector.NumberSelectorMode.BOX,
@@ -108,8 +112,8 @@ def _schema(defaults: dict[str, Any]) -> vol.Schema:
                 default=defaults.get(CONF_COOL_TEMPERATURE, DEFAULT_COOL_TEMPERATURE),
             ): selector.NumberSelector(
                 selector.NumberSelectorConfig(
-                    min=5,
-                    max=45,
+                    min=MIN_COOL_TEMPERATURE,
+                    max=MAX_COOL_TEMPERATURE,
                     step=0.5,
                     unit_of_measurement=UnitOfTemperature.CELSIUS,
                     mode=selector.NumberSelectorMode.BOX,
@@ -252,6 +256,18 @@ class SolarSpaOptionsFlow(config_entries.OptionsFlow):
 def _validate(user_input: dict[str, Any]) -> dict[str, str]:
     """Validate threshold relationships."""
     errors: dict[str, str] = {}
+    if not (
+        MIN_HEAT_TEMPERATURE
+        <= user_input[CONF_HEAT_TEMPERATURE]
+        <= MAX_HEAT_TEMPERATURE
+    ):
+        errors["base"] = "heat_temperature_out_of_range"
+    if not (
+        MIN_COOL_TEMPERATURE
+        <= user_input[CONF_COOL_TEMPERATURE]
+        <= MAX_COOL_TEMPERATURE
+    ):
+        errors["base"] = "cool_temperature_out_of_range"
     if user_input[CONF_OFF_THRESHOLD] >= user_input[CONF_ON_THRESHOLD]:
         errors["base"] = "off_threshold_must_be_below_on_threshold"
     if user_input[CONF_COOL_TEMPERATURE] >= user_input[CONF_HEAT_TEMPERATURE]:

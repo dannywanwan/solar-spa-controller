@@ -21,7 +21,9 @@
     },
     "error": {
       "off_threshold_must_be_below_on_threshold": "The OFF threshold must be below the ON threshold.",
-      "cool_temperature_must_be_below_heat_temperature": "The cool temperature must be below the heat temperature."
+      "cool_temperature_must_be_below_heat_temperature": "The cool temperature must be below the heat temperature.",
+      "heat_temperature_out_of_range": "The heat target must be between 26 and 40 °C.",
+      "cool_temperature_out_of_range": "The cool target must be between 18 and 26 °C."
     },
     "abort": {
       "already_configured": "This solar and spa entity combination is already configured."
@@ -48,7 +50,9 @@
     },
     "error": {
       "off_threshold_must_be_below_on_threshold": "The OFF threshold must be below the ON threshold.",
-      "cool_temperature_must_be_below_heat_temperature": "The cool temperature must be below the heat temperature."
+      "cool_temperature_must_be_below_heat_temperature": "The cool temperature must be below the heat temperature.",
+      "heat_temperature_out_of_range": "The heat target must be between 26 and 40 °C.",
+      "cool_temperature_out_of_range": "The cool target must be between 18 and 26 °C."
     }
   },
   "entity": {
