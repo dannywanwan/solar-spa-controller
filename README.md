@@ -30,6 +30,10 @@ It is designed to replace a fragile automation with a small controller that has:
 
 HACS installs the files only. The entities and device are created after the integration is added through **Devices & services**.
 
+### Updating
+
+After updating Solar Spa Controller through HACS, restart Home Assistant. HACS updates the files on disk, but Home Assistant may keep the old custom integration code loaded until a full restart.
+
 ### Manual
 
 1. Copy `custom_components/solar_spa_controller` into your Home Assistant `/config/custom_components/` directory.
