@@ -36,6 +36,11 @@ SENSOR_DESCRIPTIONS = (
         translation_key="controller_state",
         icon="mdi:spa",
     ),
+    SensorEntityDescription(
+        key="last_action",
+        translation_key="last_action",
+        icon="mdi:message-text-clock",
+    ),
 )
 
 
@@ -87,6 +92,9 @@ class SolarSpaSensor(CoordinatorEntity[SolarSpaCoordinator], SensorEntity):
 
         if self.entity_description.key == "controller_state":
             return data.controller_state
+
+        if self.entity_description.key == "last_action":
+            return data.last_action[:255]
 
         return None
 

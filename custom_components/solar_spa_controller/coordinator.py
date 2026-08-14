@@ -18,6 +18,8 @@ from .const import (
     CONF_COOL_TEMPERATURE,
     CONF_CT_EXPORT_SIGN,
     CONF_HEAT_TEMPERATURE,
+    CONF_HIGH_RANGE_OPTION,
+    CONF_LOW_RANGE_OPTION,
     CONF_MIN_HOLD_TIME,
     CONF_OFF_THRESHOLD,
     CONF_ON_THRESHOLD,
@@ -25,11 +27,14 @@ from .const import (
     CONF_SAMPLING_INTERVAL,
     CONF_SOLAR_ENTITY,
     CONF_SPA_CLIMATE_ENTITY,
+    CONF_TEMP_RANGE_SELECT_ENTITY,
     CT_EXPORT_NEGATIVE,
     DEFAULT_CT_EXPORT_SIGN,
     DEFAULT_AVERAGING_WINDOW,
     DEFAULT_COOL_TEMPERATURE,
     DEFAULT_HEAT_TEMPERATURE,
+    DEFAULT_HIGH_RANGE_OPTION,
+    DEFAULT_LOW_RANGE_OPTION,
     DEFAULT_MIN_HOLD_TIME,
     DEFAULT_OFF_THRESHOLD,
     DEFAULT_ON_THRESHOLD,
@@ -46,6 +51,7 @@ from .const import (
 
 _LOGGER = logging.getLogger(__name__)
 SERVICE_SET_TEMPERATURE = "set_temperature"
+SERVICE_SELECT_OPTION = "select_option"
 
 
 @dataclass(slots=True)
@@ -205,6 +211,10 @@ class SolarSpaCoordinator(DataUpdateCoordinator[SolarSpaData]):
             return self._active_target or STATE_WAITING
 
         try:
+            range_ok = await self._async_set_temperature_range(desired_target)
+            if not range_ok:
+                return self._active_target or STATE_WAITING
+
             await self.hass.services.async_call(
                 "climate",
                 SERVICE_SET_TEMPERATURE,
@@ -221,7 +231,7 @@ class SolarSpaCoordinator(DataUpdateCoordinator[SolarSpaData]):
             _LOGGER.warning(
                 "Could not set spa temperature for %s",
                 self._option(CONF_SPA_CLIMATE_ENTITY),
-                exc_info=err,
+                exc_info=True,
             )
             return self._active_target or STATE_WAITING
 
@@ -232,6 +242,44 @@ class SolarSpaCoordinator(DataUpdateCoordinator[SolarSpaData]):
             f"was {average:.0f} W"
         )
         return desired_target
+
+    async def _async_set_temperature_range(self, desired_target: str) -> bool:
+        """Switch a separate spa range select entity before setting temperature."""
+        range_entity = self._option(CONF_TEMP_RANGE_SELECT_ENTITY)
+        if not range_entity:
+            return True
+
+        option = (
+            self._option(CONF_HIGH_RANGE_OPTION)
+            if desired_target == STATE_HEATING
+            else self._option(CONF_LOW_RANGE_OPTION)
+        )
+        if not option:
+            return True
+
+        try:
+            await self.hass.services.async_call(
+                "select",
+                SERVICE_SELECT_OPTION,
+                {
+                    ATTR_ENTITY_ID: range_entity,
+                    "option": option,
+                },
+                blocking=True,
+            )
+        except Exception as err:
+            self._last_action = (
+                f"Could not set spa temperature range to {option}: {err}"
+            )
+            _LOGGER.warning(
+                "Could not set spa temperature range for %s to %s",
+                range_entity,
+                option,
+                exc_info=True,
+            )
+            return False
+
+        return True
 
     def _hold_time_elapsed(self, now: datetime) -> bool:
         """Return whether enough time has passed since the last switch."""
@@ -256,6 +304,9 @@ class SolarSpaCoordinator(DataUpdateCoordinator[SolarSpaData]):
             CONF_COOL_TEMPERATURE: DEFAULT_COOL_TEMPERATURE,
             CONF_POWER_SOURCE: DEFAULT_POWER_SOURCE,
             CONF_CT_EXPORT_SIGN: DEFAULT_CT_EXPORT_SIGN,
+            CONF_TEMP_RANGE_SELECT_ENTITY: None,
+            CONF_LOW_RANGE_OPTION: DEFAULT_LOW_RANGE_OPTION,
+            CONF_HIGH_RANGE_OPTION: DEFAULT_HIGH_RANGE_OPTION,
             CONF_ON_THRESHOLD: DEFAULT_ON_THRESHOLD,
             CONF_OFF_THRESHOLD: DEFAULT_OFF_THRESHOLD,
             CONF_AVERAGING_WINDOW: DEFAULT_AVERAGING_WINDOW,

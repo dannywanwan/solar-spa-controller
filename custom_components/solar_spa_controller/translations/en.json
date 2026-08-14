@@ -9,6 +9,9 @@
           "solar_entity": "Power sensor entity",
           "ct_export_sign": "CT clamp export direction",
           "spa_climate_entity": "Spa climate entity",
+          "temp_range_select_entity": "Temperature range select entity",
+          "low_range_option": "Low range option",
+          "high_range_option": "High range option",
           "heat_temperature": "Heat target temperature",
           "cool_temperature": "Cool target temperature",
           "on_threshold": "Solar ON threshold",
@@ -38,6 +41,9 @@
           "solar_entity": "Power sensor entity",
           "ct_export_sign": "CT clamp export direction",
           "spa_climate_entity": "Spa climate entity",
+          "temp_range_select_entity": "Temperature range select entity",
+          "low_range_option": "Low range option",
+          "high_range_option": "High range option",
           "heat_temperature": "Heat target temperature",
           "cool_temperature": "Cool target temperature",
           "on_threshold": "Solar ON threshold",
@@ -62,6 +68,9 @@
       },
       "controller_state": {
         "name": "Controller state"
+      },
+      "last_action": {
+        "name": "Last action"
       }
     },
     "switch": {

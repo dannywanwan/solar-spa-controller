@@ -15,6 +15,8 @@ from .const import (
     CONF_COOL_TEMPERATURE,
     CONF_CT_EXPORT_SIGN,
     CONF_HEAT_TEMPERATURE,
+    CONF_HIGH_RANGE_OPTION,
+    CONF_LOW_RANGE_OPTION,
     CONF_MIN_HOLD_TIME,
     CONF_OFF_THRESHOLD,
     CONF_ON_THRESHOLD,
@@ -22,12 +24,15 @@ from .const import (
     CONF_SAMPLING_INTERVAL,
     CONF_SOLAR_ENTITY,
     CONF_SPA_CLIMATE_ENTITY,
+    CONF_TEMP_RANGE_SELECT_ENTITY,
     CT_EXPORT_NEGATIVE,
     CT_EXPORT_POSITIVE,
     DEFAULT_AVERAGING_WINDOW,
     DEFAULT_COOL_TEMPERATURE,
     DEFAULT_CT_EXPORT_SIGN,
     DEFAULT_HEAT_TEMPERATURE,
+    DEFAULT_HIGH_RANGE_OPTION,
+    DEFAULT_LOW_RANGE_OPTION,
     DEFAULT_MIN_HOLD_TIME,
     DEFAULT_OFF_THRESHOLD,
     DEFAULT_ON_THRESHOLD,
@@ -95,6 +100,20 @@ def _schema(defaults: dict[str, Any]) -> vol.Schema:
             ): selector.EntitySelector(
                 selector.EntitySelectorConfig(domain=["climate"])
             ),
+            vol.Optional(
+                CONF_TEMP_RANGE_SELECT_ENTITY,
+                default=defaults.get(CONF_TEMP_RANGE_SELECT_ENTITY),
+            ): selector.EntitySelector(
+                selector.EntitySelectorConfig(domain=["select"])
+            ),
+            vol.Optional(
+                CONF_LOW_RANGE_OPTION,
+                default=defaults.get(CONF_LOW_RANGE_OPTION, DEFAULT_LOW_RANGE_OPTION),
+            ): selector.TextSelector(),
+            vol.Optional(
+                CONF_HIGH_RANGE_OPTION,
+                default=defaults.get(CONF_HIGH_RANGE_OPTION, DEFAULT_HIGH_RANGE_OPTION),
+            ): selector.TextSelector(),
             vol.Required(
                 CONF_HEAT_TEMPERATURE,
                 default=defaults.get(CONF_HEAT_TEMPERATURE, DEFAULT_HEAT_TEMPERATURE),
