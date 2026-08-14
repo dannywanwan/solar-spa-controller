@@ -173,13 +173,6 @@ class SolarSpaCoordinator(DataUpdateCoordinator[SolarSpaData]):
             )
             return STATE_INACTIVE
 
-        if not self._averaging_window_ready(now):
-            self._last_action = (
-                f"Warming up averaging window; average available power is "
-                f"{average:.0f} W from {len(self._samples)} sample(s)"
-            )
-            return self._active_target or STATE_WARMING_UP
-
         on_threshold = self._option(CONF_ON_THRESHOLD)
         off_threshold = self._option(CONF_OFF_THRESHOLD)
 
@@ -192,6 +185,13 @@ class SolarSpaCoordinator(DataUpdateCoordinator[SolarSpaData]):
         elif average <= off_threshold:
             desired_target = STATE_COOLING
             desired_temperature = self._option(CONF_COOL_TEMPERATURE)
+
+        if desired_target == STATE_HEATING and not self._averaging_window_ready(now):
+            self._last_action = (
+                f"Warming up before heating; average available power is "
+                f"{average:.0f} W from {len(self._samples)} sample(s)"
+            )
+            return self._active_target or STATE_WARMING_UP
 
         if desired_target is None:
             self._last_action = (
