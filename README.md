@@ -10,6 +10,7 @@ It is designed to replace a fragile automation with a small controller that has:
 - Power source selection for solar panel production or CT clamps
 - Power sensor entity selection
 - Spa climate entity selection
+- Optional heat and cool scene selection
 - Optional spa temperature range select entity for Low/High range spas
 - Heat and cool target temperatures
 - Separate solar ON and OFF thresholds for hysteresis
@@ -70,6 +71,8 @@ For CT clamps, you can choose whether export/available power is reported as a po
 Turn **Automatic control** off when you want to heat the spa manually. The integration will keep monitoring available power and updating its diagnostic entities, but it will not change the spa's target temperature while the switch is off.
 
 If your spa has separate low/high temperature ranges, set the optional **Temperature range select entity** in the integration options. Use `Low` for the low range option and `High` for the high range option unless your spa integration shows different option names. The controller switches to the high range before setting the heat target and the low range before setting the cool target.
+
+If **Heat scene** and/or **Cool scene** are configured, the controller activates those scenes when thresholds are met instead of directly setting the spa climate target temperature. This is the recommended path when your existing Home Assistant scenes already change the spa reliably.
 
 ## Notes
 

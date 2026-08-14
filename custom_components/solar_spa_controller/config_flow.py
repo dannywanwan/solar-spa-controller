@@ -13,8 +13,10 @@ from homeassistant.helpers import selector
 from .const import (
     CONF_AVERAGING_WINDOW,
     CONF_COOL_TEMPERATURE,
+    CONF_COOL_SCENE_ENTITY,
     CONF_CT_EXPORT_SIGN,
     CONF_HEAT_TEMPERATURE,
+    CONF_HEAT_SCENE_ENTITY,
     CONF_HIGH_RANGE_OPTION,
     CONF_LOW_RANGE_OPTION,
     CONF_MIN_HOLD_TIME,
@@ -99,6 +101,18 @@ def _schema(defaults: dict[str, Any]) -> vol.Schema:
                 default=defaults.get(CONF_SPA_CLIMATE_ENTITY),
             ): selector.EntitySelector(
                 selector.EntitySelectorConfig(domain=["climate"])
+            ),
+            vol.Optional(
+                CONF_HEAT_SCENE_ENTITY,
+                default=defaults.get(CONF_HEAT_SCENE_ENTITY),
+            ): selector.EntitySelector(
+                selector.EntitySelectorConfig(domain=["scene"])
+            ),
+            vol.Optional(
+                CONF_COOL_SCENE_ENTITY,
+                default=defaults.get(CONF_COOL_SCENE_ENTITY),
+            ): selector.EntitySelector(
+                selector.EntitySelectorConfig(domain=["scene"])
             ),
             vol.Optional(
                 CONF_TEMP_RANGE_SELECT_ENTITY,

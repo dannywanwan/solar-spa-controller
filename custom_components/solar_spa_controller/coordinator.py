@@ -16,8 +16,10 @@ from homeassistant.util import dt as dt_util
 from .const import (
     CONF_AVERAGING_WINDOW,
     CONF_COOL_TEMPERATURE,
+    CONF_COOL_SCENE_ENTITY,
     CONF_CT_EXPORT_SIGN,
     CONF_HEAT_TEMPERATURE,
+    CONF_HEAT_SCENE_ENTITY,
     CONF_HIGH_RANGE_OPTION,
     CONF_LOW_RANGE_OPTION,
     CONF_MIN_HOLD_TIME,
@@ -52,6 +54,7 @@ from .const import (
 _LOGGER = logging.getLogger(__name__)
 SERVICE_SET_TEMPERATURE = "set_temperature"
 SERVICE_SELECT_OPTION = "select_option"
+SERVICE_TURN_ON = "turn_on"
 
 
 @dataclass(slots=True)
@@ -211,6 +214,14 @@ class SolarSpaCoordinator(DataUpdateCoordinator[SolarSpaData]):
             return self._active_target or STATE_WAITING
 
         try:
+            scene_result = await self._async_activate_scene(desired_target, average)
+            if scene_result is True:
+                self._active_target = desired_target
+                self._last_switch = now
+                return desired_target
+            if scene_result is None:
+                return self._active_target or STATE_WAITING
+
             range_ok = await self._async_set_temperature_range(desired_target)
             if not range_ok:
                 return self._active_target or STATE_WAITING
@@ -242,6 +253,42 @@ class SolarSpaCoordinator(DataUpdateCoordinator[SolarSpaData]):
             f"was {average:.0f} W"
         )
         return desired_target
+
+    async def _async_activate_scene(
+        self,
+        desired_target: str,
+        average: float,
+    ) -> bool | None:
+        """Activate a configured scene for the desired target."""
+        scene_entity = (
+            self._option(CONF_HEAT_SCENE_ENTITY)
+            if desired_target == STATE_HEATING
+            else self._option(CONF_COOL_SCENE_ENTITY)
+        )
+        if not scene_entity:
+            return False
+
+        try:
+            await self.hass.services.async_call(
+                "scene",
+                SERVICE_TURN_ON,
+                {ATTR_ENTITY_ID: scene_entity},
+                blocking=True,
+            )
+        except Exception as err:
+            self._last_action = f"Could not activate scene {scene_entity}: {err}"
+            _LOGGER.warning(
+                "Could not activate scene %s",
+                scene_entity,
+                exc_info=True,
+            )
+            return None
+
+        self._last_action = (
+            f"Activated {scene_entity} because average available power was "
+            f"{average:.0f} W"
+        )
+        return True
 
     async def _async_set_temperature_range(self, desired_target: str) -> bool:
         """Switch a separate spa range select entity before setting temperature."""
@@ -304,6 +351,8 @@ class SolarSpaCoordinator(DataUpdateCoordinator[SolarSpaData]):
             CONF_COOL_TEMPERATURE: DEFAULT_COOL_TEMPERATURE,
             CONF_POWER_SOURCE: DEFAULT_POWER_SOURCE,
             CONF_CT_EXPORT_SIGN: DEFAULT_CT_EXPORT_SIGN,
+            CONF_HEAT_SCENE_ENTITY: None,
+            CONF_COOL_SCENE_ENTITY: None,
             CONF_TEMP_RANGE_SELECT_ENTITY: None,
             CONF_LOW_RANGE_OPTION: DEFAULT_LOW_RANGE_OPTION,
             CONF_HIGH_RANGE_OPTION: DEFAULT_HIGH_RANGE_OPTION,
