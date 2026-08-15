@@ -19,6 +19,7 @@
           "on_threshold": "Solar ON threshold",
           "off_threshold": "Solar OFF threshold",
           "averaging_window": "Averaging window",
+          "startup_heat_samples": "Startup samples before heating",
           "min_hold_time": "Minimum hold time",
           "sampling_interval": "Sampling interval"
         }
@@ -53,6 +54,7 @@
           "on_threshold": "Solar ON threshold",
           "off_threshold": "Solar OFF threshold",
           "averaging_window": "Averaging window",
+          "startup_heat_samples": "Startup samples before heating",
           "min_hold_time": "Minimum hold time",
           "sampling_interval": "Sampling interval"
         }

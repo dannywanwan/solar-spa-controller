@@ -26,6 +26,7 @@ from .const import (
     CONF_SAMPLING_INTERVAL,
     CONF_SOLAR_ENTITY,
     CONF_SPA_CLIMATE_ENTITY,
+    CONF_STARTUP_HEAT_SAMPLES,
     CONF_TEMP_RANGE_SELECT_ENTITY,
     CT_EXPORT_NEGATIVE,
     CT_EXPORT_POSITIVE,
@@ -40,6 +41,7 @@ from .const import (
     DEFAULT_ON_THRESHOLD,
     DEFAULT_POWER_SOURCE,
     DEFAULT_SAMPLING_INTERVAL,
+    DEFAULT_STARTUP_HEAT_SAMPLES,
     DOMAIN,
     MAX_COOL_TEMPERATURE,
     MAX_HEAT_TEMPERATURE,
@@ -185,6 +187,21 @@ def _schema(defaults: dict[str, Any]) -> vol.Schema:
                     max=120,
                     step=1,
                     unit_of_measurement="min",
+                    mode=selector.NumberSelectorMode.BOX,
+                )
+            ),
+            vol.Required(
+                CONF_STARTUP_HEAT_SAMPLES,
+                default=defaults.get(
+                    CONF_STARTUP_HEAT_SAMPLES,
+                    DEFAULT_STARTUP_HEAT_SAMPLES,
+                ),
+            ): selector.NumberSelector(
+                selector.NumberSelectorConfig(
+                    min=1,
+                    max=30,
+                    step=1,
+                    unit_of_measurement="samples",
                     mode=selector.NumberSelectorMode.BOX,
                 )
             ),

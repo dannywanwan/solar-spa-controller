@@ -17,6 +17,7 @@ It is designed to replace a fragile automation with a small controller that has:
 - Heat and cool target temperatures
 - Separate solar ON and OFF thresholds for hysteresis
 - Configurable averaging window, sampling interval, and minimum hold time
+- Configurable startup sample count before heating
 - Automatic control switch so you can pause solar-based setpoint changes
 - Diagnostic sensors for average solar power and controller state
 
@@ -51,6 +52,7 @@ A reasonable first pass for many spa setups:
 - Heat target: `38` C
 - Cool target: `26` C
 - Averaging window: `10` minutes
+- Startup samples before heating: `1`
 - Solar ON threshold: `3800` W
 - Solar OFF threshold: `3200` W
 - Minimum hold time: `5` minutes
@@ -76,7 +78,7 @@ If your spa has separate low/high temperature ranges, set the optional **Tempera
 
 If **Heat scene** and/or **Cool scene** are configured, the controller activates those scenes when thresholds are met instead of directly setting the spa climate target temperature. This is the recommended path when your existing Home Assistant scenes already change the spa reliably.
 
-Sample collection only delays heating decisions. If available power is already below the OFF threshold, the controller can run the cool scene or cool target immediately. Sample collection is considered complete when the controller has collected enough readings for the configured averaging window.
+Sample collection only delays heating decisions. If available power is already below the OFF threshold, the controller can run the cool scene or cool target immediately. Heating can start once the controller has collected the configured **Startup samples before heating** count. The rolling average still uses all readings in the configured averaging window as they become available, so the controller keeps reassessing as the average grows from the first sample toward 5 samples and then the full window.
 
 ## Notes
 

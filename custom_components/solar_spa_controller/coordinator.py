@@ -30,6 +30,7 @@ from .const import (
     CONF_SAMPLING_INTERVAL,
     CONF_SOLAR_ENTITY,
     CONF_SPA_CLIMATE_ENTITY,
+    CONF_STARTUP_HEAT_SAMPLES,
     CONF_TEMP_RANGE_SELECT_ENTITY,
     CT_EXPORT_NEGATIVE,
     DEFAULT_CT_EXPORT_SIGN,
@@ -43,6 +44,7 @@ from .const import (
     DEFAULT_ON_THRESHOLD,
     DEFAULT_POWER_SOURCE,
     DEFAULT_SAMPLING_INTERVAL,
+    DEFAULT_STARTUP_HEAT_SAMPLES,
     DOMAIN,
     POWER_SOURCE_CT_CLAMPS,
     STATE_COOLING,
@@ -347,7 +349,9 @@ class SolarSpaCoordinator(DataUpdateCoordinator[SolarSpaData]):
         """Return the sample count needed for the configured averaging window."""
         window_seconds = self._option(CONF_AVERAGING_WINDOW) * 60
         sampling_interval = self._option(CONF_SAMPLING_INTERVAL)
-        return max(1, ceil(window_seconds / sampling_interval))
+        full_window_samples = max(1, ceil(window_seconds / sampling_interval))
+        startup_samples = max(1, int(self._option(CONF_STARTUP_HEAT_SAMPLES)))
+        return min(full_window_samples, startup_samples)
 
     def _option(self, key: str):
         """Read an option, falling back to config data and defaults."""
@@ -364,6 +368,7 @@ class SolarSpaCoordinator(DataUpdateCoordinator[SolarSpaData]):
             CONF_ON_THRESHOLD: DEFAULT_ON_THRESHOLD,
             CONF_OFF_THRESHOLD: DEFAULT_OFF_THRESHOLD,
             CONF_AVERAGING_WINDOW: DEFAULT_AVERAGING_WINDOW,
+            CONF_STARTUP_HEAT_SAMPLES: DEFAULT_STARTUP_HEAT_SAMPLES,
             CONF_MIN_HOLD_TIME: DEFAULT_MIN_HOLD_TIME,
             CONF_SAMPLING_INTERVAL: DEFAULT_SAMPLING_INTERVAL,
         }
