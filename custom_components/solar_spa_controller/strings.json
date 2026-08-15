@@ -20,6 +20,8 @@
           "off_threshold": "Solar OFF threshold",
           "averaging_window": "Averaging window",
           "startup_heat_samples": "Startup samples before heating",
+          "pause_when_dark": "Pause solar checks when dark",
+          "dark_elevation": "Dark pause sun elevation",
           "min_hold_time": "Minimum hold time",
           "sampling_interval": "Sampling interval"
         }
@@ -55,6 +57,8 @@
           "off_threshold": "Solar OFF threshold",
           "averaging_window": "Averaging window",
           "startup_heat_samples": "Startup samples before heating",
+          "pause_when_dark": "Pause solar checks when dark",
+          "dark_elevation": "Dark pause sun elevation",
           "min_hold_time": "Minimum hold time",
           "sampling_interval": "Sampling interval"
         }

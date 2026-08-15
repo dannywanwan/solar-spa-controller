@@ -19,6 +19,7 @@ from .const import (
     CONF_COOL_TEMPERATURE,
     CONF_COOL_SCENE_ENTITY,
     CONF_CT_EXPORT_SIGN,
+    CONF_DARK_ELEVATION,
     CONF_HEAT_TEMPERATURE,
     CONF_HEAT_SCENE_ENTITY,
     CONF_HIGH_RANGE_OPTION,
@@ -26,6 +27,7 @@ from .const import (
     CONF_MIN_HOLD_TIME,
     CONF_OFF_THRESHOLD,
     CONF_ON_THRESHOLD,
+    CONF_PAUSE_WHEN_DARK,
     CONF_POWER_SOURCE,
     CONF_SAMPLING_INTERVAL,
     CONF_SOLAR_ENTITY,
@@ -37,11 +39,13 @@ from .const import (
     DEFAULT_AVERAGING_WINDOW,
     DEFAULT_COOL_TEMPERATURE,
     DEFAULT_HEAT_TEMPERATURE,
+    DEFAULT_DARK_ELEVATION,
     DEFAULT_HIGH_RANGE_OPTION,
     DEFAULT_LOW_RANGE_OPTION,
     DEFAULT_MIN_HOLD_TIME,
     DEFAULT_OFF_THRESHOLD,
     DEFAULT_ON_THRESHOLD,
+    DEFAULT_PAUSE_WHEN_DARK,
     DEFAULT_POWER_SOURCE,
     DEFAULT_SAMPLING_INTERVAL,
     DEFAULT_STARTUP_HEAT_SAMPLES,
@@ -50,6 +54,7 @@ from .const import (
     STATE_COOLING,
     STATE_HEATING,
     STATE_INACTIVE,
+    STATE_NIGHT_PAUSED,
     STATE_WAITING,
     STATE_COLLECTING_SAMPLES,
 )
@@ -95,6 +100,18 @@ class SolarSpaCoordinator(DataUpdateCoordinator[SolarSpaData]):
         """Sample solar production and update the spa target when needed."""
         try:
             now = dt_util.utcnow()
+            if self._dark_pause_active():
+                self._trim_samples(now)
+                state = await self._async_handle_dark_pause(now)
+                return SolarSpaData(
+                    average_power=self._average_power(),
+                    controller_state=state,
+                    last_action=self._last_action,
+                    sample_count=len(self._samples),
+                    active_target=self._active_target,
+                    controller_enabled=self.controller_enabled,
+                )
+
             power = self._read_available_power()
             if power is not None:
                 self._samples.append((now, power))
@@ -218,8 +235,46 @@ class SolarSpaCoordinator(DataUpdateCoordinator[SolarSpaData]):
             )
             return self._active_target or STATE_WAITING
 
+        return await self._async_apply_target(
+            now,
+            desired_target,
+            desired_temperature,
+            f"average available power was {average:.0f} W",
+        )
+
+    async def _async_handle_dark_pause(self, now: datetime) -> str:
+        """Pause power checks when it is dark, while ensuring the spa is cool/off."""
+        if not self.controller_enabled:
+            self._last_action = "Automatic spa control is off; night pause idle"
+            return STATE_INACTIVE
+
+        if self._active_target == STATE_COOLING:
+            self._last_action = "Night pause active; already in cool/off target"
+            return STATE_NIGHT_PAUSED
+
+        return await self._async_apply_target(
+            now,
+            STATE_COOLING,
+            self._option(CONF_COOL_TEMPERATURE),
+            "night pause is active",
+            ignore_hold=True,
+        )
+
+    async def _async_apply_target(
+        self,
+        now: datetime,
+        desired_target: str,
+        desired_temperature: float,
+        reason: str,
+        ignore_hold: bool = False,
+    ) -> str:
+        """Apply the desired spa target using scenes or direct climate control."""
+        if not ignore_hold and not self._hold_time_elapsed(now):
+            self._last_action = f"Waiting for hold time before switching to {desired_target}"
+            return self._active_target or STATE_WAITING
+
         try:
-            scene_result = await self._async_activate_scene(desired_target, average)
+            scene_result = await self._async_activate_scene(desired_target, reason)
             if scene_result is True:
                 self._active_target = desired_target
                 self._last_switch = now
@@ -254,15 +309,14 @@ class SolarSpaCoordinator(DataUpdateCoordinator[SolarSpaData]):
         self._active_target = desired_target
         self._last_switch = now
         self._last_action = (
-            f"Set spa to {desired_temperature:g} C because average available power "
-            f"was {average:.0f} W"
+            f"Set spa to {desired_temperature:g} C because {reason}"
         )
         return desired_target
 
     async def _async_activate_scene(
         self,
         desired_target: str,
-        average: float,
+        reason: str,
     ) -> bool | None:
         """Activate a configured scene for the desired target."""
         scene_entity = (
@@ -290,8 +344,7 @@ class SolarSpaCoordinator(DataUpdateCoordinator[SolarSpaData]):
             return None
 
         self._last_action = (
-            f"Activated {scene_entity} because average available power was "
-            f"{average:.0f} W"
+            f"Activated {scene_entity} because {reason}"
         )
         return True
 
@@ -341,6 +394,22 @@ class SolarSpaCoordinator(DataUpdateCoordinator[SolarSpaData]):
         hold_time = timedelta(minutes=self._option(CONF_MIN_HOLD_TIME))
         return now - self._last_switch >= hold_time
 
+    def _dark_pause_active(self) -> bool:
+        """Return whether power checks should pause because it is dark."""
+        if not self._option(CONF_PAUSE_WHEN_DARK):
+            return False
+
+        sun_state = self.hass.states.get("sun.sun")
+        if sun_state is None:
+            return False
+
+        try:
+            elevation = float(sun_state.attributes.get("elevation"))
+        except (TypeError, ValueError):
+            return False
+
+        return elevation <= self._option(CONF_DARK_ELEVATION)
+
     def _averaging_window_ready(self, now: datetime) -> bool:
         """Return whether the controller has enough samples to act."""
         return len(self._samples) >= self._required_sample_count()
@@ -369,6 +438,8 @@ class SolarSpaCoordinator(DataUpdateCoordinator[SolarSpaData]):
             CONF_OFF_THRESHOLD: DEFAULT_OFF_THRESHOLD,
             CONF_AVERAGING_WINDOW: DEFAULT_AVERAGING_WINDOW,
             CONF_STARTUP_HEAT_SAMPLES: DEFAULT_STARTUP_HEAT_SAMPLES,
+            CONF_PAUSE_WHEN_DARK: DEFAULT_PAUSE_WHEN_DARK,
+            CONF_DARK_ELEVATION: DEFAULT_DARK_ELEVATION,
             CONF_MIN_HOLD_TIME: DEFAULT_MIN_HOLD_TIME,
             CONF_SAMPLING_INTERVAL: DEFAULT_SAMPLING_INTERVAL,
         }
