@@ -49,7 +49,7 @@ from .const import (
     STATE_HEATING,
     STATE_INACTIVE,
     STATE_WAITING,
-    STATE_WARMING_UP,
+    STATE_COLLECTING_SAMPLES,
 )
 
 _LOGGER = logging.getLogger(__name__)
@@ -190,11 +190,11 @@ class SolarSpaCoordinator(DataUpdateCoordinator[SolarSpaData]):
         if desired_target == STATE_HEATING and not self._averaging_window_ready(now):
             required_samples = self._required_sample_count()
             self._last_action = (
-                f"Warming up before heating; average available power is "
+                f"Collecting samples before heating; average available power is "
                 f"{average:.0f} W from {len(self._samples)} of "
                 f"{required_samples} required sample(s)"
             )
-            return self._active_target or STATE_WARMING_UP
+            return self._active_target or STATE_COLLECTING_SAMPLES
 
         if desired_target is None:
             self._last_action = (
