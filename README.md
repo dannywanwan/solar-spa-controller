@@ -74,7 +74,7 @@ If your spa has separate low/high temperature ranges, set the optional **Tempera
 
 If **Heat scene** and/or **Cool scene** are configured, the controller activates those scenes when thresholds are met instead of directly setting the spa climate target temperature. This is the recommended path when your existing Home Assistant scenes already change the spa reliably.
 
-The averaging warm-up only delays heating decisions. If available power is already below the OFF threshold, the controller can run the cool scene or cool target immediately.
+The averaging warm-up only delays heating decisions. If available power is already below the OFF threshold, the controller can run the cool scene or cool target immediately. Warm-up is considered complete when the controller has collected enough samples for the configured averaging window.
 
 ## Notes
 

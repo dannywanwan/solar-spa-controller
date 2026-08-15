@@ -5,6 +5,7 @@ from __future__ import annotations
 from collections import deque
 from dataclasses import dataclass
 from datetime import datetime, timedelta
+from math import ceil
 import logging
 
 from homeassistant.const import ATTR_ENTITY_ID, ATTR_TEMPERATURE, UnitOfPower
@@ -187,9 +188,11 @@ class SolarSpaCoordinator(DataUpdateCoordinator[SolarSpaData]):
             desired_temperature = self._option(CONF_COOL_TEMPERATURE)
 
         if desired_target == STATE_HEATING and not self._averaging_window_ready(now):
+            required_samples = self._required_sample_count()
             self._last_action = (
                 f"Warming up before heating; average available power is "
-                f"{average:.0f} W from {len(self._samples)} sample(s)"
+                f"{average:.0f} W from {len(self._samples)} of "
+                f"{required_samples} required sample(s)"
             )
             return self._active_target or STATE_WARMING_UP
 
@@ -338,11 +341,13 @@ class SolarSpaCoordinator(DataUpdateCoordinator[SolarSpaData]):
 
     def _averaging_window_ready(self, now: datetime) -> bool:
         """Return whether the controller has enough samples to act."""
-        if not self._samples:
-            return False
+        return len(self._samples) >= self._required_sample_count()
 
-        window = timedelta(minutes=self._option(CONF_AVERAGING_WINDOW))
-        return now - self._samples[0][0] >= window
+    def _required_sample_count(self) -> int:
+        """Return the sample count needed for the configured averaging window."""
+        window_seconds = self._option(CONF_AVERAGING_WINDOW) * 60
+        sampling_interval = self._option(CONF_SAMPLING_INTERVAL)
+        return max(1, ceil(window_seconds / sampling_interval))
 
     def _option(self, key: str):
         """Read an option, falling back to config data and defaults."""
