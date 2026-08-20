@@ -16,6 +16,8 @@ from .const import (
     CONF_COOL_SCENE_ENTITY,
     CONF_CT_EXPORT_SIGN,
     CONF_DARK_ELEVATION,
+    CONF_FORCE_COOL_ENTITY,
+    CONF_FORCE_COOL_STATE,
     CONF_HEAT_TEMPERATURE,
     CONF_HEAT_SCENE_ENTITY,
     CONF_HIGH_RANGE_OPTION,
@@ -36,6 +38,8 @@ from .const import (
     DEFAULT_COOL_TEMPERATURE,
     DEFAULT_CT_EXPORT_SIGN,
     DEFAULT_DARK_ELEVATION,
+    DEFAULT_FORCE_COOL_ENTITY,
+    DEFAULT_FORCE_COOL_STATE,
     DEFAULT_HEAT_TEMPERATURE,
     DEFAULT_HIGH_RANGE_OPTION,
     DEFAULT_LOW_RANGE_OPTION,
@@ -182,6 +186,16 @@ def _schema(defaults: dict[str, Any]) -> vol.Schema:
                     mode=selector.NumberSelectorMode.BOX,
                 )
             ),
+            vol.Optional(
+                CONF_FORCE_COOL_ENTITY,
+                default=defaults.get(CONF_FORCE_COOL_ENTITY, DEFAULT_FORCE_COOL_ENTITY),
+            ): selector.EntitySelector(
+                selector.EntitySelectorConfig(domain=["sensor"])
+            ),
+            vol.Optional(
+                CONF_FORCE_COOL_STATE,
+                default=defaults.get(CONF_FORCE_COOL_STATE, DEFAULT_FORCE_COOL_STATE),
+            ): selector.TextSelector(),
             vol.Required(
                 CONF_AVERAGING_WINDOW,
                 default=defaults.get(CONF_AVERAGING_WINDOW, DEFAULT_AVERAGING_WINDOW),

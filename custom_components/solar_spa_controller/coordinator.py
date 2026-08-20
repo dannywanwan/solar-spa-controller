@@ -20,6 +20,8 @@ from .const import (
     CONF_COOL_SCENE_ENTITY,
     CONF_CT_EXPORT_SIGN,
     CONF_DARK_ELEVATION,
+    CONF_FORCE_COOL_ENTITY,
+    CONF_FORCE_COOL_STATE,
     CONF_HEAT_TEMPERATURE,
     CONF_HEAT_SCENE_ENTITY,
     CONF_HIGH_RANGE_OPTION,
@@ -40,6 +42,8 @@ from .const import (
     DEFAULT_COOL_TEMPERATURE,
     DEFAULT_HEAT_TEMPERATURE,
     DEFAULT_DARK_ELEVATION,
+    DEFAULT_FORCE_COOL_ENTITY,
+    DEFAULT_FORCE_COOL_STATE,
     DEFAULT_HIGH_RANGE_OPTION,
     DEFAULT_LOW_RANGE_OPTION,
     DEFAULT_MIN_HOLD_TIME,
@@ -52,6 +56,7 @@ from .const import (
     DOMAIN,
     POWER_SOURCE_CT_CLAMPS,
     STATE_COOLING,
+    STATE_FORCED_COOLING,
     STATE_HEATING,
     STATE_INACTIVE,
     STATE_NIGHT_PAUSED,
@@ -100,17 +105,14 @@ class SolarSpaCoordinator(DataUpdateCoordinator[SolarSpaData]):
         """Sample solar production and update the spa target when needed."""
         try:
             now = dt_util.utcnow()
+            force_cool_state = await self._async_handle_force_cool(now)
+            if force_cool_state is not None:
+                return self._data(force_cool_state)
+
             if self._dark_pause_active():
                 self._trim_samples(now)
                 state = await self._async_handle_dark_pause(now)
-                return SolarSpaData(
-                    average_power=self._average_power(),
-                    controller_state=state,
-                    last_action=self._last_action,
-                    sample_count=len(self._samples),
-                    active_target=self._active_target,
-                    controller_enabled=self.controller_enabled,
-                )
+                return self._data(state)
 
             power = self._read_available_power()
             if power is not None:
@@ -120,16 +122,24 @@ class SolarSpaCoordinator(DataUpdateCoordinator[SolarSpaData]):
             average = self._average_power()
             state = await self._maybe_control_spa(now, average)
 
-            return SolarSpaData(
-                average_power=average,
-                controller_state=state,
-                last_action=self._last_action,
-                sample_count=len(self._samples),
-                active_target=self._active_target,
-                controller_enabled=self.controller_enabled,
-            )
+            return self._data(state, average)
         except Exception as err:
             raise UpdateFailed(str(err)) from err
+
+    def _data(
+        self,
+        state: str,
+        average: float | None = None,
+    ) -> SolarSpaData:
+        """Build coordinator data for entities."""
+        return SolarSpaData(
+            average_power=self._average_power() if average is None else average,
+            controller_state=state,
+            last_action=self._last_action,
+            sample_count=len(self._samples),
+            active_target=self._active_target,
+            controller_enabled=self.controller_enabled,
+        )
 
     async def async_set_enabled(self, enabled: bool) -> None:
         """Enable or disable automatic spa control."""
@@ -176,6 +186,44 @@ class SolarSpaCoordinator(DataUpdateCoordinator[SolarSpaData]):
         if not self._samples:
             return None
         return sum(sample for _, sample in self._samples) / len(self._samples)
+
+    async def _async_handle_force_cool(self, now: datetime) -> str | None:
+        """Force the spa into cool/off when a configured entity matches a state."""
+        if not self.controller_enabled:
+            return None
+
+        force_entity = self._option(CONF_FORCE_COOL_ENTITY)
+        force_state = self._option(CONF_FORCE_COOL_STATE)
+        if not force_entity or not force_state:
+            return None
+
+        state = self.hass.states.get(force_entity)
+        if state is None:
+            return None
+
+        matched_value = state.state
+        if not _matches_configured_state(state.state, force_state):
+            run_state = state.attributes.get("run_state")
+            if not _matches_configured_state(run_state, force_state):
+                return None
+            matched_value = f"run_state {run_state}"
+
+        self._trim_samples(now)
+        if self._active_target == STATE_COOLING:
+            self._last_action = (
+                f"Forced cool active because {force_entity} is {matched_value}; "
+                "already in cool/off target"
+            )
+            return STATE_FORCED_COOLING
+
+        return await self._async_apply_target(
+            now,
+            STATE_COOLING,
+            self._option(CONF_COOL_TEMPERATURE),
+            f"{force_entity} is {matched_value}",
+            ignore_hold=True,
+            result_state=STATE_FORCED_COOLING,
+        )
 
     async def _maybe_control_spa(
         self,
@@ -267,6 +315,7 @@ class SolarSpaCoordinator(DataUpdateCoordinator[SolarSpaData]):
         desired_temperature: float,
         reason: str,
         ignore_hold: bool = False,
+        result_state: str | None = None,
     ) -> str:
         """Apply the desired spa target using scenes or direct climate control."""
         if not ignore_hold and not self._hold_time_elapsed(now):
@@ -278,7 +327,7 @@ class SolarSpaCoordinator(DataUpdateCoordinator[SolarSpaData]):
             if scene_result is True:
                 self._active_target = desired_target
                 self._last_switch = now
-                return desired_target
+                return result_state or desired_target
             if scene_result is None:
                 return self._active_target or STATE_WAITING
 
@@ -311,7 +360,7 @@ class SolarSpaCoordinator(DataUpdateCoordinator[SolarSpaData]):
         self._last_action = (
             f"Set spa to {desired_temperature:g} C because {reason}"
         )
-        return desired_target
+        return result_state or desired_target
 
     async def _async_activate_scene(
         self,
@@ -436,6 +485,8 @@ class SolarSpaCoordinator(DataUpdateCoordinator[SolarSpaData]):
             CONF_HIGH_RANGE_OPTION: DEFAULT_HIGH_RANGE_OPTION,
             CONF_ON_THRESHOLD: DEFAULT_ON_THRESHOLD,
             CONF_OFF_THRESHOLD: DEFAULT_OFF_THRESHOLD,
+            CONF_FORCE_COOL_ENTITY: DEFAULT_FORCE_COOL_ENTITY,
+            CONF_FORCE_COOL_STATE: DEFAULT_FORCE_COOL_STATE,
             CONF_AVERAGING_WINDOW: DEFAULT_AVERAGING_WINDOW,
             CONF_STARTUP_HEAT_SAMPLES: DEFAULT_STARTUP_HEAT_SAMPLES,
             CONF_PAUSE_WHEN_DARK: DEFAULT_PAUSE_WHEN_DARK,
@@ -449,3 +500,8 @@ class SolarSpaCoordinator(DataUpdateCoordinator[SolarSpaData]):
 def _state_unit(state: State) -> str | None:
     """Return a state's unit of measurement."""
     return state.attributes.get("unit_of_measurement")
+
+
+def _matches_configured_state(value: object, configured_state: object) -> bool:
+    """Return whether a Home Assistant value matches a configured state."""
+    return str(value).strip().lower() == str(configured_state).strip().lower()

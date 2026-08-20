@@ -19,6 +19,7 @@ It is designed to replace a fragile automation with a small controller that has:
 - Configurable averaging window, sampling interval, and minimum hold time
 - Configurable startup sample count before heating
 - Optional dark/twilight pause to avoid unnecessary overnight power checks
+- Optional force-cool trigger for appliance states such as washing machine drying
 - Automatic control switch so you can pause solar-based setpoint changes
 - Diagnostic sensors for average solar power and controller state
 
@@ -58,6 +59,8 @@ A reasonable first pass for many spa setups:
 - Dark pause sun elevation: `-6` degrees
 - Solar ON threshold: `3800` W
 - Solar OFF threshold: `3200` W
+- Force cool sensor: `sensor.washeteria`
+- Force cool state: `drying`
 - Minimum hold time: `5` minutes
 - Sampling interval: `60` seconds
 
@@ -80,6 +83,8 @@ Turn **Automatic control** off when you want to heat the spa manually. The integ
 If your spa has separate low/high temperature ranges, set the optional **Temperature range select entity** in the integration options. Use `Low` for the low range option and `High` for the high range option unless your spa integration shows different option names. The controller switches to the high range before setting the heat target and the low range before setting the cool target.
 
 If **Heat scene** and/or **Cool scene** are configured, the controller activates those scenes when thresholds are met instead of directly setting the spa climate target temperature. This is the recommended path when your existing Home Assistant scenes already change the spa reliably.
+
+If **Force cool sensor** and **Force cool state** are configured, that match takes priority over the solar rules. By default the controller watches `sensor.washeteria` for `drying`; it checks both the sensor's main state and its `run_state` attribute. When either matches, it immediately applies the cool scene or cool target, ignores the minimum hold time, and reports the controller state as `forced_cooling`.
 
 Sample collection only delays heating decisions. If available power is already below the OFF threshold, the controller can run the cool scene or cool target immediately. Heating can start once the controller has collected the configured **Startup samples before heating** count. The rolling average still uses all readings in the configured averaging window as they become available, so the controller keeps reassessing as the average grows from the first sample toward 5 samples and then the full window.
 
