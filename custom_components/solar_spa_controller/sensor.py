@@ -15,13 +15,18 @@ from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
 from .const import (
+    CONF_CURRENT_TEMPERATURE_MISSING_MINUTES,
     CONF_FORCE_COOL_ENTITY,
     CONF_FORCE_COOL_STATE,
+    CONF_NOTIFICATION_DEVICE_ID,
     CONF_POWER_SOURCE,
+    CONF_REQUIRE_CURRENT_TEMPERATURE_FOR_HEAT,
     CONF_SOLAR_ENTITY,
+    DEFAULT_CURRENT_TEMPERATURE_MISSING_MINUTES,
     DEFAULT_FORCE_COOL_ENTITY,
     DEFAULT_FORCE_COOL_STATE,
     DEFAULT_POWER_SOURCE,
+    DEFAULT_REQUIRE_CURRENT_TEMPERATURE_FOR_HEAT,
     DOMAIN,
 )
 from .coordinator import SolarSpaCoordinator
@@ -114,6 +119,10 @@ class SolarSpaSensor(CoordinatorEntity[SolarSpaCoordinator], SensorEntity):
             "sample_count": data.sample_count,
             "active_target": data.active_target,
             "automatic_control_enabled": data.controller_enabled,
+            "current_temperature_available": data.current_temperature_available,
+            "current_temperature_missing_minutes": (
+                data.current_temperature_missing_minutes
+            ),
             "power_source": self.coordinator.entry.options.get(
                 CONF_POWER_SOURCE,
                 self.coordinator.entry.data.get(CONF_POWER_SOURCE, DEFAULT_POWER_SOURCE),
@@ -135,5 +144,27 @@ class SolarSpaSensor(CoordinatorEntity[SolarSpaCoordinator], SensorEntity):
                     CONF_FORCE_COOL_STATE,
                     DEFAULT_FORCE_COOL_STATE,
                 ),
+            ),
+            "require_current_temperature_for_heat": (
+                self.coordinator.entry.options.get(
+                    CONF_REQUIRE_CURRENT_TEMPERATURE_FOR_HEAT,
+                    self.coordinator.entry.data.get(
+                        CONF_REQUIRE_CURRENT_TEMPERATURE_FOR_HEAT,
+                        DEFAULT_REQUIRE_CURRENT_TEMPERATURE_FOR_HEAT,
+                    ),
+                )
+            ),
+            "current_temperature_missing_minutes_before_notification": (
+                self.coordinator.entry.options.get(
+                    CONF_CURRENT_TEMPERATURE_MISSING_MINUTES,
+                    self.coordinator.entry.data.get(
+                        CONF_CURRENT_TEMPERATURE_MISSING_MINUTES,
+                        DEFAULT_CURRENT_TEMPERATURE_MISSING_MINUTES,
+                    ),
+                )
+            ),
+            "notification_device_id": self.coordinator.entry.options.get(
+                CONF_NOTIFICATION_DEVICE_ID,
+                self.coordinator.entry.data.get(CONF_NOTIFICATION_DEVICE_ID),
             ),
         }

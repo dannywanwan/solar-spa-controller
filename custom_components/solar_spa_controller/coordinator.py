@@ -11,14 +11,17 @@ import logging
 from homeassistant.const import ATTR_ENTITY_ID, ATTR_TEMPERATURE, UnitOfPower
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant, State
+from homeassistant.helpers import device_registry as dr
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
 from homeassistant.util import dt as dt_util
+from homeassistant.util import slugify
 
 from .const import (
     CONF_AVERAGING_WINDOW,
     CONF_COOL_TEMPERATURE,
     CONF_COOL_SCENE_ENTITY,
     CONF_CT_EXPORT_SIGN,
+    CONF_CURRENT_TEMPERATURE_MISSING_MINUTES,
     CONF_DARK_ELEVATION,
     CONF_FORCE_COOL_ENTITY,
     CONF_FORCE_COOL_STATE,
@@ -27,10 +30,12 @@ from .const import (
     CONF_HIGH_RANGE_OPTION,
     CONF_LOW_RANGE_OPTION,
     CONF_MIN_HOLD_TIME,
+    CONF_NOTIFICATION_DEVICE_ID,
     CONF_OFF_THRESHOLD,
     CONF_ON_THRESHOLD,
     CONF_PAUSE_WHEN_DARK,
     CONF_POWER_SOURCE,
+    CONF_REQUIRE_CURRENT_TEMPERATURE_FOR_HEAT,
     CONF_SAMPLING_INTERVAL,
     CONF_SOLAR_ENTITY,
     CONF_SPA_CLIMATE_ENTITY,
@@ -40,6 +45,7 @@ from .const import (
     DEFAULT_CT_EXPORT_SIGN,
     DEFAULT_AVERAGING_WINDOW,
     DEFAULT_COOL_TEMPERATURE,
+    DEFAULT_CURRENT_TEMPERATURE_MISSING_MINUTES,
     DEFAULT_HEAT_TEMPERATURE,
     DEFAULT_DARK_ELEVATION,
     DEFAULT_FORCE_COOL_ENTITY,
@@ -51,6 +57,7 @@ from .const import (
     DEFAULT_ON_THRESHOLD,
     DEFAULT_PAUSE_WHEN_DARK,
     DEFAULT_POWER_SOURCE,
+    DEFAULT_REQUIRE_CURRENT_TEMPERATURE_FOR_HEAT,
     DEFAULT_SAMPLING_INTERVAL,
     DEFAULT_STARTUP_HEAT_SAMPLES,
     DOMAIN,
@@ -61,6 +68,7 @@ from .const import (
     STATE_INACTIVE,
     STATE_NIGHT_PAUSED,
     STATE_WAITING,
+    STATE_WAITING_FOR_CURRENT_TEMPERATURE,
     STATE_COLLECTING_SAMPLES,
 )
 
@@ -68,6 +76,8 @@ _LOGGER = logging.getLogger(__name__)
 SERVICE_SET_TEMPERATURE = "set_temperature"
 SERVICE_SELECT_OPTION = "select_option"
 SERVICE_TURN_ON = "turn_on"
+ATTR_CURRENT_TEMPERATURE = "current_temperature"
+NOTIFY_DOMAIN = "notify"
 
 
 @dataclass(slots=True)
@@ -80,6 +90,8 @@ class SolarSpaData:
     sample_count: int
     active_target: str | None
     controller_enabled: bool
+    current_temperature_available: bool
+    current_temperature_missing_minutes: int | None
 
 
 class SolarSpaCoordinator(DataUpdateCoordinator[SolarSpaData]):
@@ -92,6 +104,8 @@ class SolarSpaCoordinator(DataUpdateCoordinator[SolarSpaData]):
         self._active_target: str | None = None
         self._last_switch: datetime | None = None
         self._last_action = "Controller initialized"
+        self._missing_current_temperature_since: datetime | None = None
+        self._current_temperature_notification_sent = False
         self.controller_enabled = True
 
         super().__init__(
@@ -105,6 +119,7 @@ class SolarSpaCoordinator(DataUpdateCoordinator[SolarSpaData]):
         """Sample solar production and update the spa target when needed."""
         try:
             now = dt_util.utcnow()
+            self._reset_current_temperature_monitor_if_available()
             force_cool_state = await self._async_handle_force_cool(now)
             if force_cool_state is not None:
                 return self._data(force_cool_state)
@@ -139,6 +154,10 @@ class SolarSpaCoordinator(DataUpdateCoordinator[SolarSpaData]):
             sample_count=len(self._samples),
             active_target=self._active_target,
             controller_enabled=self.controller_enabled,
+            current_temperature_available=self._current_temperature_available(),
+            current_temperature_missing_minutes=(
+                self._current_temperature_missing_minutes()
+            ),
         )
 
     async def async_set_enabled(self, enabled: bool) -> None:
@@ -263,6 +282,16 @@ class SolarSpaCoordinator(DataUpdateCoordinator[SolarSpaData]):
             )
             return self._active_target or STATE_COLLECTING_SAMPLES
 
+        if desired_target == STATE_HEATING and self._option(
+            CONF_REQUIRE_CURRENT_TEMPERATURE_FOR_HEAT
+        ):
+            temperature_state = await self._async_handle_missing_current_temperature(
+                now,
+                average,
+            )
+            if temperature_state is not None:
+                return temperature_state
+
         if desired_target is None:
             self._last_action = (
                 f"Average available power is {average:.0f} W, between thresholds; "
@@ -289,6 +318,40 @@ class SolarSpaCoordinator(DataUpdateCoordinator[SolarSpaData]):
             desired_temperature,
             f"average available power was {average:.0f} W",
         )
+
+    async def _async_handle_missing_current_temperature(
+        self,
+        now: datetime,
+        average: float,
+    ) -> str | None:
+        """Block heating while the spa is not reporting current temperature."""
+        if self._current_temperature_available():
+            self._missing_current_temperature_since = None
+            self._current_temperature_notification_sent = False
+            return None
+
+        if self._missing_current_temperature_since is None:
+            self._missing_current_temperature_since = now
+
+        missing_minutes = self._current_temperature_missing_minutes(now) or 0
+        await self._async_maybe_notify_missing_current_temperature(now)
+
+        if self._active_target == STATE_HEATING:
+            return await self._async_apply_target(
+                now,
+                STATE_COOLING,
+                self._option(CONF_COOL_TEMPERATURE),
+                "spa current temperature is unavailable",
+                ignore_hold=True,
+                result_state=STATE_WAITING_FOR_CURRENT_TEMPERATURE,
+            )
+
+        self._last_action = (
+            "Waiting to heat because the spa current temperature has been "
+            f"unavailable for {missing_minutes} min; average available power is "
+            f"{average:.0f} W"
+        )
+        return STATE_WAITING_FOR_CURRENT_TEMPERATURE
 
     async def _async_handle_dark_pause(self, now: datetime) -> str:
         """Pause power checks when it is dark, while ensuring the spa is cool/off."""
@@ -463,6 +526,107 @@ class SolarSpaCoordinator(DataUpdateCoordinator[SolarSpaData]):
         """Return whether the controller has enough samples to act."""
         return len(self._samples) >= self._required_sample_count()
 
+    def _current_temperature_available(self) -> bool:
+        """Return whether the spa climate entity has a real current temperature."""
+        state = self.hass.states.get(self._option(CONF_SPA_CLIMATE_ENTITY))
+        if state is None:
+            return False
+
+        current_temperature = state.attributes.get(ATTR_CURRENT_TEMPERATURE)
+        if current_temperature in (None, "", "unknown", "unavailable"):
+            return False
+
+        try:
+            float(current_temperature)
+        except (TypeError, ValueError):
+            return False
+
+        return True
+
+    def _reset_current_temperature_monitor_if_available(self) -> None:
+        """Clear missing-temperature tracking once the spa reports temperature."""
+        if not self._current_temperature_available():
+            return
+
+        self._missing_current_temperature_since = None
+        self._current_temperature_notification_sent = False
+
+    def _current_temperature_missing_minutes(
+        self,
+        now: datetime | None = None,
+    ) -> int | None:
+        """Return how long the spa current temperature has been missing."""
+        if self._missing_current_temperature_since is None:
+            return None
+
+        now = now or dt_util.utcnow()
+        return int((now - self._missing_current_temperature_since).total_seconds() // 60)
+
+    async def _async_maybe_notify_missing_current_temperature(
+        self,
+        now: datetime,
+    ) -> None:
+        """Notify the selected phone when current temperature is missing too long."""
+        if self._current_temperature_notification_sent:
+            return
+
+        missing_for = now - (self._missing_current_temperature_since or now)
+        delay = timedelta(
+            minutes=self._option(CONF_CURRENT_TEMPERATURE_MISSING_MINUTES)
+        )
+        if missing_for < delay:
+            return
+
+        service = self._mobile_app_notify_service()
+        if service is None:
+            return
+
+        await self.hass.services.async_call(
+            NOTIFY_DOMAIN,
+            service,
+            {
+                "title": "Solar Spa Controller",
+                "message": (
+                    "The spa is not reporting a current temperature, so heating "
+                    "has been blocked. Check the spa circulation pump."
+                ),
+            },
+            blocking=False,
+        )
+        self._current_temperature_notification_sent = True
+
+    def _mobile_app_notify_service(self) -> str | None:
+        """Return the notify service for the selected mobile app device."""
+        device_id = self._option(CONF_NOTIFICATION_DEVICE_ID)
+        if not device_id:
+            return None
+
+        device = dr.async_get(self.hass).async_get(device_id)
+        if device is None:
+            return None
+
+        candidates: list[str] = []
+        for identifier_domain, identifier in device.identifiers:
+            if identifier_domain == "mobile_app":
+                candidates.append(str(identifier))
+        candidates.extend(
+            candidate
+            for candidate in (device.name_by_user, device.name)
+            if candidate is not None
+        )
+
+        for candidate in candidates:
+            slug = slugify(candidate)
+            possible_services = [slug]
+            if not slug.startswith("mobile_app_"):
+                possible_services.insert(0, f"mobile_app_{slug}")
+
+            for service in possible_services:
+                if self.hass.services.has_service(NOTIFY_DOMAIN, service):
+                    return service
+
+        return None
+
     def _required_sample_count(self) -> int:
         """Return the sample count needed for the configured averaging window."""
         window_seconds = self._option(CONF_AVERAGING_WINDOW) * 60
@@ -478,6 +642,13 @@ class SolarSpaCoordinator(DataUpdateCoordinator[SolarSpaData]):
             CONF_COOL_TEMPERATURE: DEFAULT_COOL_TEMPERATURE,
             CONF_POWER_SOURCE: DEFAULT_POWER_SOURCE,
             CONF_CT_EXPORT_SIGN: DEFAULT_CT_EXPORT_SIGN,
+            CONF_REQUIRE_CURRENT_TEMPERATURE_FOR_HEAT: (
+                DEFAULT_REQUIRE_CURRENT_TEMPERATURE_FOR_HEAT
+            ),
+            CONF_CURRENT_TEMPERATURE_MISSING_MINUTES: (
+                DEFAULT_CURRENT_TEMPERATURE_MISSING_MINUTES
+            ),
+            CONF_NOTIFICATION_DEVICE_ID: None,
             CONF_HEAT_SCENE_ENTITY: None,
             CONF_COOL_SCENE_ENTITY: None,
             CONF_TEMP_RANGE_SELECT_ENTITY: None,

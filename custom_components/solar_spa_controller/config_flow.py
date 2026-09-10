@@ -15,6 +15,7 @@ from .const import (
     CONF_COOL_TEMPERATURE,
     CONF_COOL_SCENE_ENTITY,
     CONF_CT_EXPORT_SIGN,
+    CONF_CURRENT_TEMPERATURE_MISSING_MINUTES,
     CONF_DARK_ELEVATION,
     CONF_FORCE_COOL_ENTITY,
     CONF_FORCE_COOL_STATE,
@@ -23,10 +24,12 @@ from .const import (
     CONF_HIGH_RANGE_OPTION,
     CONF_LOW_RANGE_OPTION,
     CONF_MIN_HOLD_TIME,
+    CONF_NOTIFICATION_DEVICE_ID,
     CONF_OFF_THRESHOLD,
     CONF_PAUSE_WHEN_DARK,
     CONF_ON_THRESHOLD,
     CONF_POWER_SOURCE,
+    CONF_REQUIRE_CURRENT_TEMPERATURE_FOR_HEAT,
     CONF_SAMPLING_INTERVAL,
     CONF_SOLAR_ENTITY,
     CONF_SPA_CLIMATE_ENTITY,
@@ -37,6 +40,7 @@ from .const import (
     DEFAULT_AVERAGING_WINDOW,
     DEFAULT_COOL_TEMPERATURE,
     DEFAULT_CT_EXPORT_SIGN,
+    DEFAULT_CURRENT_TEMPERATURE_MISSING_MINUTES,
     DEFAULT_DARK_ELEVATION,
     DEFAULT_FORCE_COOL_ENTITY,
     DEFAULT_FORCE_COOL_STATE,
@@ -48,6 +52,7 @@ from .const import (
     DEFAULT_PAUSE_WHEN_DARK,
     DEFAULT_ON_THRESHOLD,
     DEFAULT_POWER_SOURCE,
+    DEFAULT_REQUIRE_CURRENT_TEMPERATURE_FOR_HEAT,
     DEFAULT_SAMPLING_INTERVAL,
     DEFAULT_STARTUP_HEAT_SAMPLES,
     DOMAIN,
@@ -111,6 +116,34 @@ def _schema(defaults: dict[str, Any]) -> vol.Schema:
                 default=defaults.get(CONF_SPA_CLIMATE_ENTITY),
             ): selector.EntitySelector(
                 selector.EntitySelectorConfig(domain=["climate"])
+            ),
+            vol.Required(
+                CONF_REQUIRE_CURRENT_TEMPERATURE_FOR_HEAT,
+                default=defaults.get(
+                    CONF_REQUIRE_CURRENT_TEMPERATURE_FOR_HEAT,
+                    DEFAULT_REQUIRE_CURRENT_TEMPERATURE_FOR_HEAT,
+                ),
+            ): selector.BooleanSelector(),
+            vol.Required(
+                CONF_CURRENT_TEMPERATURE_MISSING_MINUTES,
+                default=defaults.get(
+                    CONF_CURRENT_TEMPERATURE_MISSING_MINUTES,
+                    DEFAULT_CURRENT_TEMPERATURE_MISSING_MINUTES,
+                ),
+            ): selector.NumberSelector(
+                selector.NumberSelectorConfig(
+                    min=1,
+                    max=120,
+                    step=1,
+                    unit_of_measurement="min",
+                    mode=selector.NumberSelectorMode.BOX,
+                )
+            ),
+            vol.Optional(
+                CONF_NOTIFICATION_DEVICE_ID,
+                default=defaults.get(CONF_NOTIFICATION_DEVICE_ID),
+            ): selector.DeviceSelector(
+                selector.DeviceSelectorConfig(integration="mobile_app")
             ),
             vol.Optional(
                 CONF_HEAT_SCENE_ENTITY,

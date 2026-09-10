@@ -12,6 +12,8 @@ It is designed to replace a fragile automation with a small controller that has:
 - Power source selection for solar panel production or CT clamps
 - Power sensor entity selection
 - Spa climate entity selection
+- Optional current-temperature safety check before heating
+- Optional phone notification when current temperature is missing
 - Optional heat and cool scene selection
 - Optional spa temperature range select entity for Low/High range spas
 - Heat and cool target temperatures
@@ -59,6 +61,8 @@ A reasonable first pass for many spa setups:
 - Dark pause sun elevation: `-6` degrees
 - Solar ON threshold: `3800` W
 - Solar OFF threshold: `3200` W
+- Only heat when current temperature is available: `on`
+- Minutes before temperature warning: `15`
 - Force cool sensor: `sensor.washeteria`
 - Force cool state: `drying`
 - Minimum hold time: `5` minutes
@@ -83,6 +87,10 @@ Turn **Automatic control** off when you want to heat the spa manually. The integ
 If your spa has separate low/high temperature ranges, set the optional **Temperature range select entity** in the integration options. Use `Low` for the low range option and `High` for the high range option unless your spa integration shows different option names. The controller switches to the high range before setting the heat target and the low range before setting the cool target.
 
 If **Heat scene** and/or **Cool scene** are configured, the controller activates those scenes when thresholds are met instead of directly setting the spa climate target temperature. This is the recommended path when your existing Home Assistant scenes already change the spa reliably.
+
+If **Only heat when current temperature is available** is enabled, the controller will not switch to heat unless the spa climate entity is reporting a numeric current temperature. This is intended as a circulation-pump safety check. If the controller would otherwise heat but the current temperature is missing, it waits instead; if it already thought it was heating, it applies the cool scene or cool target as a protective fallback.
+
+Set **Phone to notify** to a Home Assistant mobile app device if you want a phone alert. If the spa current temperature is missing for the configured warning delay, the controller sends one notification and waits for the current temperature to return before notifying again.
 
 If **Force cool sensor** and **Force cool state** are configured, that match takes priority over the solar rules. By default the controller watches `sensor.washeteria` for `drying`; it checks both the sensor's main state and its `run_state` attribute. When either matches, it immediately applies the cool scene or cool target, ignores the minimum hold time, and reports the controller state as `forced_cooling`.
 
