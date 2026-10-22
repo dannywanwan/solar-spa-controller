@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from datetime import time
 from typing import Any
 
 import voluptuous as vol
@@ -16,6 +17,9 @@ from .const import (
     CONF_COOL_SCENE_ENTITY,
     CONF_CT_EXPORT_SIGN,
     CONF_CURRENT_TEMPERATURE_MISSING_MINUTES,
+    CONF_DAILY_COOL_LOCKOUT,
+    CONF_DAILY_CYCLE_START,
+    CONF_DAILY_SOLAR_START,
     CONF_DARK_ELEVATION,
     CONF_FORCE_COOL_ENTITY,
     CONF_FORCE_COOL_STATE,
@@ -41,6 +45,9 @@ from .const import (
     DEFAULT_COOL_TEMPERATURE,
     DEFAULT_CT_EXPORT_SIGN,
     DEFAULT_CURRENT_TEMPERATURE_MISSING_MINUTES,
+    DEFAULT_DAILY_COOL_LOCKOUT,
+    DEFAULT_DAILY_CYCLE_START,
+    DEFAULT_DAILY_SOLAR_START,
     DEFAULT_DARK_ELEVATION,
     DEFAULT_FORCE_COOL_ENTITY,
     DEFAULT_FORCE_COOL_STATE,
@@ -230,6 +237,27 @@ def _schema(defaults: dict[str, Any]) -> vol.Schema:
                 default=defaults.get(CONF_FORCE_COOL_STATE, DEFAULT_FORCE_COOL_STATE),
             ): selector.TextSelector(),
             vol.Required(
+                CONF_DAILY_COOL_LOCKOUT,
+                default=defaults.get(
+                    CONF_DAILY_COOL_LOCKOUT,
+                    DEFAULT_DAILY_COOL_LOCKOUT,
+                ),
+            ): selector.BooleanSelector(),
+            vol.Required(
+                CONF_DAILY_CYCLE_START,
+                default=defaults.get(
+                    CONF_DAILY_CYCLE_START,
+                    DEFAULT_DAILY_CYCLE_START,
+                ),
+            ): selector.TimeSelector(),
+            vol.Required(
+                CONF_DAILY_SOLAR_START,
+                default=defaults.get(
+                    CONF_DAILY_SOLAR_START,
+                    DEFAULT_DAILY_SOLAR_START,
+                ),
+            ): selector.TimeSelector(),
+            vol.Required(
                 CONF_AVERAGING_WINDOW,
                 default=defaults.get(CONF_AVERAGING_WINDOW, DEFAULT_AVERAGING_WINDOW),
             ): selector.NumberSelector(
@@ -389,4 +417,8 @@ def _validate(user_input: dict[str, Any]) -> dict[str, str]:
         errors["base"] = "off_threshold_must_be_below_on_threshold"
     if user_input[CONF_COOL_TEMPERATURE] >= user_input[CONF_HEAT_TEMPERATURE]:
         errors["base"] = "cool_temperature_must_be_below_heat_temperature"
+    if user_input[CONF_DAILY_COOL_LOCKOUT] and time.fromisoformat(
+        user_input[CONF_DAILY_CYCLE_START]
+    ) >= time.fromisoformat(user_input[CONF_DAILY_SOLAR_START]):
+        errors["base"] = "daily_cool_time_must_be_before_solar_time"
     return errors

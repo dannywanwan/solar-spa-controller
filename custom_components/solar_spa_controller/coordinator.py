@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from collections import deque
 from dataclasses import dataclass
-from datetime import datetime, timedelta
+from datetime import date, datetime, time, timedelta
 from math import ceil
 import logging
 
@@ -22,6 +22,9 @@ from .const import (
     CONF_COOL_SCENE_ENTITY,
     CONF_CT_EXPORT_SIGN,
     CONF_CURRENT_TEMPERATURE_MISSING_MINUTES,
+    CONF_DAILY_COOL_LOCKOUT,
+    CONF_DAILY_CYCLE_START,
+    CONF_DAILY_SOLAR_START,
     CONF_DARK_ELEVATION,
     CONF_FORCE_COOL_ENTITY,
     CONF_FORCE_COOL_STATE,
@@ -46,6 +49,9 @@ from .const import (
     DEFAULT_AVERAGING_WINDOW,
     DEFAULT_COOL_TEMPERATURE,
     DEFAULT_CURRENT_TEMPERATURE_MISSING_MINUTES,
+    DEFAULT_DAILY_COOL_LOCKOUT,
+    DEFAULT_DAILY_CYCLE_START,
+    DEFAULT_DAILY_SOLAR_START,
     DEFAULT_HEAT_TEMPERATURE,
     DEFAULT_DARK_ELEVATION,
     DEFAULT_FORCE_COOL_ENTITY,
@@ -63,6 +69,7 @@ from .const import (
     DOMAIN,
     POWER_SOURCE_CT_CLAMPS,
     STATE_COOLING,
+    STATE_DAILY_COOL_LOCKOUT,
     STATE_FORCED_COOLING,
     STATE_HEATING,
     STATE_INACTIVE,
@@ -106,6 +113,7 @@ class SolarSpaCoordinator(DataUpdateCoordinator[SolarSpaData]):
         self._last_action = "Controller initialized"
         self._missing_current_temperature_since: datetime | None = None
         self._current_temperature_notification_sent = False
+        self._daily_cycle_cool_date: date | None = None
         self.controller_enabled = True
 
         super().__init__(
@@ -123,6 +131,10 @@ class SolarSpaCoordinator(DataUpdateCoordinator[SolarSpaData]):
             force_cool_state = await self._async_handle_force_cool(now)
             if force_cool_state is not None:
                 return self._data(force_cool_state)
+
+            daily_lockout_state = await self._async_handle_daily_cool_lockout(now)
+            if daily_lockout_state is not None:
+                return self._data(daily_lockout_state)
 
             if self._dark_pause_active():
                 self._trim_samples(now)
@@ -243,6 +255,56 @@ class SolarSpaCoordinator(DataUpdateCoordinator[SolarSpaData]):
             ignore_hold=True,
             result_state=STATE_FORCED_COOLING,
         )
+
+    async def _async_handle_daily_cool_lockout(
+        self,
+        now: datetime,
+    ) -> str | None:
+        """Keep the spa cool through its daily cycle before solar control starts."""
+        if not self.controller_enabled or not self._option(CONF_DAILY_COOL_LOCKOUT):
+            return None
+
+        local_now = dt_util.as_local(now)
+        local_time = local_now.time().replace(tzinfo=None)
+        cycle_start = _configured_time(
+            self._option(CONF_DAILY_CYCLE_START),
+            DEFAULT_DAILY_CYCLE_START,
+        )
+        solar_start = _configured_time(
+            self._option(CONF_DAILY_SOLAR_START),
+            DEFAULT_DAILY_SOLAR_START,
+        )
+
+        if local_time >= solar_start:
+            return None
+
+        self._trim_samples(now)
+        resend_after_cycle_start = (
+            local_time >= cycle_start
+            and self._daily_cycle_cool_date != local_now.date()
+        )
+
+        if self._active_target == STATE_COOLING and not resend_after_cycle_start:
+            self._last_action = (
+                f"Daily cool lockout active until {solar_start.strftime('%H:%M')}; "
+                "already in cool/off target"
+            )
+            return STATE_DAILY_COOL_LOCKOUT
+
+        state = await self._async_apply_target(
+            now,
+            STATE_COOLING,
+            self._option(CONF_COOL_TEMPERATURE),
+            (
+                f"daily spa cycle protection is active until "
+                f"{solar_start.strftime('%H:%M')}"
+            ),
+            ignore_hold=True,
+            result_state=STATE_DAILY_COOL_LOCKOUT,
+        )
+        if local_time >= cycle_start and self._active_target == STATE_COOLING:
+            self._daily_cycle_cool_date = local_now.date()
+        return state
 
     async def _maybe_control_spa(
         self,
@@ -658,6 +720,9 @@ class SolarSpaCoordinator(DataUpdateCoordinator[SolarSpaData]):
             CONF_OFF_THRESHOLD: DEFAULT_OFF_THRESHOLD,
             CONF_FORCE_COOL_ENTITY: DEFAULT_FORCE_COOL_ENTITY,
             CONF_FORCE_COOL_STATE: DEFAULT_FORCE_COOL_STATE,
+            CONF_DAILY_COOL_LOCKOUT: DEFAULT_DAILY_COOL_LOCKOUT,
+            CONF_DAILY_CYCLE_START: DEFAULT_DAILY_CYCLE_START,
+            CONF_DAILY_SOLAR_START: DEFAULT_DAILY_SOLAR_START,
             CONF_AVERAGING_WINDOW: DEFAULT_AVERAGING_WINDOW,
             CONF_STARTUP_HEAT_SAMPLES: DEFAULT_STARTUP_HEAT_SAMPLES,
             CONF_PAUSE_WHEN_DARK: DEFAULT_PAUSE_WHEN_DARK,
@@ -671,6 +736,14 @@ class SolarSpaCoordinator(DataUpdateCoordinator[SolarSpaData]):
 def _state_unit(state: State) -> str | None:
     """Return a state's unit of measurement."""
     return state.attributes.get("unit_of_measurement")
+
+
+def _configured_time(value: str, fallback: str) -> time:
+    """Parse a time selector value, falling back to the integration default."""
+    try:
+        return time.fromisoformat(value)
+    except (TypeError, ValueError):
+        return time.fromisoformat(fallback)
 
 
 def _matches_configured_state(value: object, configured_state: object) -> bool:

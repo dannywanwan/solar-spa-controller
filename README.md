@@ -22,6 +22,7 @@ It is designed to replace a fragile automation with a small controller that has:
 - Configurable startup sample count before heating
 - Optional dark/twilight pause to avoid unnecessary overnight power checks
 - Optional force-cool trigger for appliance states such as washing machine drying
+- Daily startup-cycle protection that holds cool before solar heating is allowed
 - Automatic control switch so you can pause solar-based setpoint changes
 - Diagnostic sensors for average solar power and controller state
 
@@ -65,6 +66,9 @@ A reasonable first pass for many spa setups:
 - Minutes before temperature warning: `15`
 - Force cool sensor: `sensor.washeteria`
 - Force cool state: `drying`
+- Protect daily spa startup cycle: `on`
+- Daily cool command time: `08:48`
+- Earliest solar heating time: `08:55`
 - Minimum hold time: `5` minutes
 - Sampling interval: `60` seconds
 
@@ -93,6 +97,8 @@ If **Only heat when current temperature is available** is enabled, the controlle
 Set **Phone to notify** to a Home Assistant mobile app device if you want a phone alert. If the spa current temperature is missing for the configured warning delay, the controller sends one notification and waits for the current temperature to return before notifying again.
 
 If **Force cool sensor** and **Force cool state** are configured, that match takes priority over the solar rules. By default the controller watches `sensor.washeteria` for `drying`; it checks both the sensor's main state and its `run_state` attribute. When either matches, it immediately applies the cool scene or cool target, ignores the minimum hold time, and reports the controller state as `forced_cooling`.
+
+When **Protect daily spa startup cycle** is enabled, the controller blocks solar heating before the configured earliest heating time. It also deliberately reapplies the cool scene or cool target once at the daily cool command time, even if it already believed the spa was cool. The defaults send cool at `08:48`, protect the spa's `08:50` cycle, and resume normal solar checks from `08:55` using Home Assistant's local time.
 
 Sample collection only delays heating decisions. If available power is already below the OFF threshold, the controller can run the cool scene or cool target immediately. Heating can start once the controller has collected the configured **Startup samples before heating** count. The rolling average still uses all readings in the configured averaging window as they become available, so the controller keeps reassessing as the average grows from the first sample toward 5 samples and then the full window.
 

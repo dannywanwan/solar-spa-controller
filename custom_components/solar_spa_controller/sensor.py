@@ -16,6 +16,9 @@ from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
 from .const import (
     CONF_CURRENT_TEMPERATURE_MISSING_MINUTES,
+    CONF_DAILY_COOL_LOCKOUT,
+    CONF_DAILY_CYCLE_START,
+    CONF_DAILY_SOLAR_START,
     CONF_FORCE_COOL_ENTITY,
     CONF_FORCE_COOL_STATE,
     CONF_NOTIFICATION_DEVICE_ID,
@@ -23,6 +26,9 @@ from .const import (
     CONF_REQUIRE_CURRENT_TEMPERATURE_FOR_HEAT,
     CONF_SOLAR_ENTITY,
     DEFAULT_CURRENT_TEMPERATURE_MISSING_MINUTES,
+    DEFAULT_DAILY_COOL_LOCKOUT,
+    DEFAULT_DAILY_CYCLE_START,
+    DEFAULT_DAILY_SOLAR_START,
     DEFAULT_FORCE_COOL_ENTITY,
     DEFAULT_FORCE_COOL_STATE,
     DEFAULT_POWER_SOURCE,
@@ -143,6 +149,27 @@ class SolarSpaSensor(CoordinatorEntity[SolarSpaCoordinator], SensorEntity):
                 self.coordinator.entry.data.get(
                     CONF_FORCE_COOL_STATE,
                     DEFAULT_FORCE_COOL_STATE,
+                ),
+            ),
+            "daily_cool_lockout": self.coordinator.entry.options.get(
+                CONF_DAILY_COOL_LOCKOUT,
+                self.coordinator.entry.data.get(
+                    CONF_DAILY_COOL_LOCKOUT,
+                    DEFAULT_DAILY_COOL_LOCKOUT,
+                ),
+            ),
+            "daily_cycle_start": self.coordinator.entry.options.get(
+                CONF_DAILY_CYCLE_START,
+                self.coordinator.entry.data.get(
+                    CONF_DAILY_CYCLE_START,
+                    DEFAULT_DAILY_CYCLE_START,
+                ),
+            ),
+            "daily_solar_start": self.coordinator.entry.options.get(
+                CONF_DAILY_SOLAR_START,
+                self.coordinator.entry.data.get(
+                    CONF_DAILY_SOLAR_START,
+                    DEFAULT_DAILY_SOLAR_START,
                 ),
             ),
             "require_current_temperature_for_heat": (

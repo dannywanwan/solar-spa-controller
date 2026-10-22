@@ -23,6 +23,9 @@
           "off_threshold": "Solar OFF threshold",
           "force_cool_entity": "Force cool sensor",
           "force_cool_state": "Force cool state",
+          "daily_cool_lockout": "Protect daily spa startup cycle",
+          "daily_cycle_start": "Daily cool command time",
+          "daily_solar_start": "Earliest solar heating time",
           "averaging_window": "Averaging window",
           "startup_heat_samples": "Startup samples before heating",
           "pause_when_dark": "Pause solar checks when dark",
@@ -36,7 +39,8 @@
       "off_threshold_must_be_below_on_threshold": "The OFF threshold must be below the ON threshold.",
       "cool_temperature_must_be_below_heat_temperature": "The cool temperature must be below the heat temperature.",
       "heat_temperature_out_of_range": "The heat target must be between 26 and 40 °C.",
-      "cool_temperature_out_of_range": "The cool target must be between 18 and 26 °C."
+      "cool_temperature_out_of_range": "The cool target must be between 18 and 26 °C.",
+      "daily_cool_time_must_be_before_solar_time": "The daily cool command time must be before the earliest solar heating time."
     },
     "abort": {
       "already_configured": "This solar and spa entity combination is already configured."
@@ -65,6 +69,9 @@
           "off_threshold": "Solar OFF threshold",
           "force_cool_entity": "Force cool sensor",
           "force_cool_state": "Force cool state",
+          "daily_cool_lockout": "Protect daily spa startup cycle",
+          "daily_cycle_start": "Daily cool command time",
+          "daily_solar_start": "Earliest solar heating time",
           "averaging_window": "Averaging window",
           "startup_heat_samples": "Startup samples before heating",
           "pause_when_dark": "Pause solar checks when dark",
@@ -78,7 +85,8 @@
       "off_threshold_must_be_below_on_threshold": "The OFF threshold must be below the ON threshold.",
       "cool_temperature_must_be_below_heat_temperature": "The cool temperature must be below the heat temperature.",
       "heat_temperature_out_of_range": "The heat target must be between 26 and 40 °C.",
-      "cool_temperature_out_of_range": "The cool target must be between 18 and 26 °C."
+      "cool_temperature_out_of_range": "The cool target must be between 18 and 26 °C.",
+      "daily_cool_time_must_be_before_solar_time": "The daily cool command time must be before the earliest solar heating time."
     }
   },
   "entity": {
